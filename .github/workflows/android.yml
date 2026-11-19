@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout project
         uses: actions/checkout@v4
 
       - name: Setup Java
@@ -34,7 +34,7 @@ jobs:
 
       - name: Locate project
         run: |
-          PROJECT_FILE=$(find build-src -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+          PROJECT_FILE=$(find build-src -type f \( -name settings.gradle.kts -o -name settings.gradle \) -print -quit)
 
           if [ -z "$PROJECT_FILE" ]; then
             echo "Project settings file not found"
@@ -43,10 +43,37 @@ jobs:
 
           echo "PROJECT_DIR=$(dirname "$PROJECT_FILE")" >> "$GITHUB_ENV"
 
+      - name: Fix Java and Kotlin targets
+        run: |
+          cd "$PROJECT_DIR"
+
+          if [ ! -f "app/build.gradle.kts" ]; then
+            echo "App Gradle file not found"
+            exit 1
+          fi
+
+          cat >> app/build.gradle.kts <<'EOF'
+
+          android {
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+          EOF
+
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
-          gradle wrapper
+
+          if [ ! -f "./gradlew" ]; then
+            gradle wrapper
+          fi
+
           chmod +x ./gradlew
           ./gradlew assembleDebug
 
@@ -54,5 +81,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AMEER-SCREENS-APK
-          path: build-src/**/build/outputs/apk/debug/*.apk
+          path: build-src/**/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
