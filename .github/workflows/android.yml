@@ -1,5 +1,4 @@
-
-      - name: Build APK
+- name: Build APK
         run: |
           cd "$PROJECT_DIR"
 
