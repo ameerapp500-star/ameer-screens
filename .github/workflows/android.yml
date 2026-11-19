@@ -4,8 +4,7 @@ name: Build Ameer Screens APK
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: read
@@ -15,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -27,26 +26,37 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Enter Android project
+      - name: Extract Android project
         run: |
-          cd build-src/ameer-screens-starter
-          pwd
-          ls
+          unzip -q ameer-screens-starter.zip -d build-project
+          SETTINGS=$(find build-project -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: Gradle settings file not found"
+            find build-project -maxdepth 4 -type f
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Found project: $PROJECT_DIR"
 
       - name: Create Gradle Wrapper
-        working-directory: build-src/ameer-screens-starter
         run: |
-          if [ ! -f "./gradlew" ]; then
+          cd "$PROJECT_DIR"
+          if [ ! -f gradlew ]; then
             gradle wrapper --gradle-version 8.11.1
           fi
-          chmod +x ./gradlew
+          chmod +x gradlew
 
       - name: Build APK
-        working-directory: build-src/ameer-screens-starter
-        run: ./gradlew assembleDebug
+        run: |
+          cd "$PROJECT_DIR"
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ameer-screens-debug-apk
-          path: build-src/ameer-screens-starter/app/build/outputs/apk/debug/app-debug.apk
+          path: build-project/**/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
