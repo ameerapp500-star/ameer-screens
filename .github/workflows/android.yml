@@ -43,10 +43,11 @@ jobs:
 
           echo "PROJECT_DIR=$(dirname "$PROJECT_FILE")" >> "$GITHUB_ENV"
 
-      - name: Fix Java Kotlin and LayoutDirection
+      - name: Inspect project files
         run: |
           cd "$PROJECT_DIR"
 
+          echo "===== MAIN ACTIVITY ====="
           MAIN_ACTIVITY=$(find app/src/main -name MainActivity.kt -print -quit)
 
           if [ -z "$MAIN_ACTIVITY" ]; then
@@ -54,23 +55,13 @@ jobs:
             exit 1
           fi
 
-          if ! grep -q "import androidx.compose.ui.unit.LayoutDirection" "$MAIN_ACTIVITY"; then
-            sed -i '/^package /a import androidx.compose.ui.unit.LayoutDirection' "$MAIN_ACTIVITY"
-          fi
+          cat "$MAIN_ACTIVITY"
 
-          cat >> app/build.gradle.kts <<'EOF'
+          echo "===== APP GRADLE ====="
+          cat app/build.gradle.kts
 
-          android {
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-
-              kotlinOptions {
-                  jvmTarget = "17"
-              }
-          }
-          EOF
+          echo "===== PROJECT FILES ====="
+          find app/src/main -maxdepth 4 -type f | head -100
 
       - name: Build APK
         run: |
@@ -84,6 +75,7 @@ jobs:
           ./gradlew assembleDebug
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: AMEER-SCREENS-APK
