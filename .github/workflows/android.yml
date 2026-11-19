@@ -1,11 +1,58 @@
-- name: Build APK
-        run: |
-          cd "$PROJECT_DIR"
 
-          if [ ! -f "./gradlew" ]; then
-            echo "Creating Gradle Wrapper..."
-            gradle wrapper
+name: AMEER SCREENS APK Builder
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Extract project
+        run: |
+          mkdir -p build-src
+          unzip -q ameer-screens-starter.zip -d build-src
+
+      - name: Locate project
+        run: |
+          PROJECT_FILE=$(find build-src -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+
+          if [ -z "$PROJECT_FILE" ]; then
+            echo "Project settings file not found"
+            exit 1
           fi
 
+          echo "PROJECT_DIR=$(dirname "$PROJECT_FILE")" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+          gradle wrapper
           chmod +x ./gradlew
           ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AMEER-SCREENS-APK
+          path: build-src/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
