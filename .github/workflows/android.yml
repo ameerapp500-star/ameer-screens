@@ -23,30 +23,31 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Android project
+      - name: Extract project
         run: |
           unzip -q ameer-screens-starter.zip -d build-project
           SETTINGS=$(find build-project -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
+          if [ -z "$SETTINGS" ]; then
+            echo "Gradle settings not found"
+            exit 1
+          fi
           PROJECT_DIR=$(dirname "$SETTINGS")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Configure Java and Kotlin JVM 17
+      - name: Configure JVM 17
         run: |
-          FILE="$PROJECT_DIR/app/build.gradle"
-          if [ -f "$PROJECT_DIR/app/build.gradle.kts" ]; then
-            FILE="$PROJECT_DIR/app/build.gradle.kts"
-          fi
-          echo "Build file: $FILE"
+          FILE="$PROJECT_DIR/app/build.gradle.kts"
+
           cat >> "$FILE" <<'EOF'
 
           android {
               compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
               }
           }
 
-          tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+          tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
               kotlinOptions {
                   jvmTarget = "17"
               }
