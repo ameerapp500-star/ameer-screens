@@ -43,13 +43,19 @@ jobs:
 
           echo "PROJECT_DIR=$(dirname "$PROJECT_FILE")" >> "$GITHUB_ENV"
 
-      - name: Fix Java and Kotlin targets
+      - name: Fix Java Kotlin and LayoutDirection
         run: |
           cd "$PROJECT_DIR"
 
-          if [ ! -f "app/build.gradle.kts" ]; then
-            echo "App Gradle file not found"
+          MAIN_ACTIVITY=$(find app/src/main -name MainActivity.kt -print -quit)
+
+          if [ -z "$MAIN_ACTIVITY" ]; then
+            echo "MainActivity.kt not found"
             exit 1
+          fi
+
+          if ! grep -q "import androidx.compose.ui.unit.LayoutDirection" "$MAIN_ACTIVITY"; then
+            sed -i '/^package /a import androidx.compose.ui.unit.LayoutDirection' "$MAIN_ACTIVITY"
           fi
 
           cat >> app/build.gradle.kts <<'EOF'
