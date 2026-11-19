@@ -26,6 +26,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
 
       - name: Extract project
         run: |
@@ -37,37 +39,18 @@ jobs:
           PROJECT_FILE=$(find build-src -type f \( -name settings.gradle.kts -o -name settings.gradle \) -print -quit)
 
           if [ -z "$PROJECT_FILE" ]; then
-            echo "Project settings file not found"
+            echo "Android project not found"
             exit 1
           fi
 
           echo "PROJECT_DIR=$(dirname "$PROJECT_FILE")" >> "$GITHUB_ENV"
-
-      - name: Inspect project files
-        run: |
-          cd "$PROJECT_DIR"
-
-          echo "===== MAIN ACTIVITY ====="
-          MAIN_ACTIVITY=$(find app/src/main -name MainActivity.kt -print -quit)
-
-          if [ -z "$MAIN_ACTIVITY" ]; then
-            echo "MainActivity.kt not found"
-            exit 1
-          fi
-
-          cat "$MAIN_ACTIVITY"
-
-          echo "===== APP GRADLE ====="
-          cat app/build.gradle.kts
-
-          echo "===== PROJECT FILES ====="
-          find app/src/main -maxdepth 4 -type f | head -100
 
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
 
           if [ ! -f "./gradlew" ]; then
+            echo "Creating Gradle Wrapper..."
             gradle wrapper
           fi
 
@@ -75,7 +58,6 @@ jobs:
           ./gradlew assembleDebug
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: AMEER-SCREENS-APK
