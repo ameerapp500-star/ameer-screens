@@ -3,7 +3,7 @@
         run: |
           cd "$PROJECT_DIR"
 
-          if [ ! -f "gradlew" ]; then
+          if [ ! -f "./gradlew" ]; then
             echo "Creating Gradle Wrapper..."
             gradle wrapper
           fi
