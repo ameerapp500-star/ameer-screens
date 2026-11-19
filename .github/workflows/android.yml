@@ -49,11 +49,12 @@ jobs:
         run: |
           cd "$PROJECT_DIR"
 
-          cat > /tmp/ameer-jvm17.init.gradle <<'EOF'
+          cat > /tmp/ameer-jvm.init.gradle <<'EOF'
           allprojects {
-              tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {
-                  sourceCompatibility = '17'
-                  targetCompatibility = '17'
+              tasks.configureEach { task ->
+                  if (task.name.endsWith("Kotlin")) {
+                      task.kotlinOptions.jvmTarget = "1.8"
+                  }
               }
           }
           EOF
@@ -65,7 +66,7 @@ jobs:
 
           chmod +x ./gradlew
 
-          ./gradlew -I /tmp/ameer-jvm17.init.gradle assembleDebug
+          ./gradlew -I /tmp/ameer-jvm.init.gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
