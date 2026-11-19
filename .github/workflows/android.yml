@@ -49,13 +49,23 @@ jobs:
         run: |
           cd "$PROJECT_DIR"
 
+          cat > /tmp/ameer-jvm17.init.gradle <<'EOF'
+          allprojects {
+              tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {
+                  sourceCompatibility = '17'
+                  targetCompatibility = '17'
+              }
+          }
+          EOF
+
           if [ ! -f "./gradlew" ]; then
             echo "Creating Gradle Wrapper..."
             gradle wrapper
           fi
 
           chmod +x ./gradlew
-          ./gradlew assembleDebug
+
+          ./gradlew -I /tmp/ameer-jvm17.init.gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
