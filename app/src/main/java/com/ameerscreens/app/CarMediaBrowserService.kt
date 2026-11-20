@@ -1,13 +1,12 @@
+
 package com.ameerscreens.app
 
-import android.content.Intent
 import android.os.Bundle
+import androidx.media.MediaBrowserServiceCompat
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
-import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import android.support.v4.media.MediaBrowserServiceCompat
 
 class CarMediaBrowserService : MediaBrowserServiceCompat() {
 
@@ -16,32 +15,33 @@ class CarMediaBrowserService : MediaBrowserServiceCompat() {
     override fun onCreate() {
         super.onCreate()
 
-        mediaSession = MediaSessionCompat(this, "AmeerScreens").apply {
-            setCallback(object : MediaSessionCompat.Callback() {
-                override fun onPlay() {
-                    setState(PlaybackStateCompat.STATE_PLAYING)
-                }
+        mediaSession = MediaSessionCompat(this, "AmeerScreens")
 
-                override fun onPause() {
-                    setState(PlaybackStateCompat.STATE_PAUSED)
-                }
+        mediaSession.setCallback(object : MediaSessionCompat.Callback() {
 
-                override fun onStop() {
-                    setState(PlaybackStateCompat.STATE_STOPPED)
-                }
+            override fun onPlay() {
+                setState(PlaybackStateCompat.STATE_PLAYING)
+            }
 
-                override fun onPlayFromMediaId(
-                    mediaId: String?,
-                    extras: Bundle?
-                ) {
-                    setState(PlaybackStateCompat.STATE_PLAYING)
-                }
-            })
+            override fun onPause() {
+                setState(PlaybackStateCompat.STATE_PAUSED)
+            }
 
-            isActive = true
-        }
+            override fun onStop() {
+                setState(PlaybackStateCompat.STATE_STOPPED)
+            }
 
+            override fun onPlayFromMediaId(
+                mediaId: String?,
+                extras: Bundle?
+            ) {
+                setState(PlaybackStateCompat.STATE_PLAYING)
+            }
+        })
+
+        mediaSession.isActive = true
         sessionToken = mediaSession.sessionToken
+
         setState(PlaybackStateCompat.STATE_STOPPED)
     }
 
@@ -54,7 +54,11 @@ class CarMediaBrowserService : MediaBrowserServiceCompat() {
                     PlaybackStateCompat.ACTION_STOP or
                     PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
                 )
-                .setState(state, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1f)
+                .setState(
+                    state,
+                    PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN,
+                    1f
+                )
                 .build()
         )
     }
