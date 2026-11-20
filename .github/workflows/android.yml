@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -35,48 +35,41 @@ jobs:
 
           if [ -z "$SETTINGS" ]; then
             echo "ERROR: Gradle settings not found"
-            find build-project -maxdepth 4 -type f
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-          echo "Project directory: $PROJECT_DIR"
-
-      - name: Diagnose AndroidManifest XML
+      - name: Fix AndroidManifest XML
         run: |
           MANIFEST="$PROJECT_DIR/app/src/main/AndroidManifest.xml"
 
           if [ ! -f "$MANIFEST" ]; then
-            echo "ERROR: AndroidManifest.xml not found"
-            find "$PROJECT_DIR" -name AndroidManifest.xml
+            echo "ERROR: Manifest not found"
             exit 1
           fi
 
-          echo "Checking: $MANIFEST"
-
           python3 - "$MANIFEST" <<'PY'
           import sys
-          import xml.etree.ElementTree as ET
+          import re
+          from pathlib import Path
 
-          path = sys.argv[1]
+          path = Path(sys.argv[1])
+          data = path.read_bytes()
 
-          try:
-              ET.parse(path)
-              print("SUCCESS: Manifest XML syntax is valid")
-          except ET.ParseError as e:
-              print("MANIFEST XML ERROR:", e)
-              line, col = e.position
-              print("Line:", line, "Column:", col)
+          # Remove UTF-8 BOM if present
+          data = data.removeprefix(b'\xef\xbb\xbf')
 
-              with open(path, encoding="utf-8", errors="replace") as f:
-                  lines = f.readlines()
+          # Remove whitespace and blank lines before XML declaration
+          data = re.sub(rb'^[\x00-\x20]+', b'', data)
 
-              if 0 < line <= len(lines):
-                  print("Problem line:", repr(lines[line - 1]))
-
-              sys.exit(1)
+          # Ensure XML declaration starts at byte zero
+          if data.startswith(b'<?xml'):
+              path.write_bytes(data)
+              print("Manifest leading characters cleaned")
+          else:
+              raise SystemExit("ERROR: XML declaration not found at file start")
           PY
 
       - name: Configure JVM 17
@@ -98,6 +91,20 @@ jobs:
               }
           }
           EOF
+
+      - name: Validate Manifest
+        run: |
+          python3 - "$PROJECT_DIR/app/src/main/AndroidManifest.xml" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          try:
+              ET.parse(sys.argv[1])
+              print("SUCCESS: AndroidManifest XML is valid")
+          except ET.ParseError as e:
+              print("MANIFEST ERROR:", e)
+              sys.exit(1)
+          PY
 
       - name: Create Gradle Wrapper
         run: |
