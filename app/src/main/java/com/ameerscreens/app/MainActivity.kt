@@ -1,4 +1,3 @@
-
 package com.ameerscreens.app
 
 import android.app.Activity
@@ -29,10 +28,11 @@ class MainActivity : Activity() {
     private val AUDIO = 4104
     private val PHOTO = 4105
 
-    private val bg = Color.rgb(8, 13, 27)
-    private val card = Color.rgb(22, 31, 52)
+    private val bg = Color.rgb(7, 12, 22)
+    private val card = Color.rgb(18, 27, 43)
     private val white = Color.WHITE
-    private val muted = Color.rgb(157, 174, 199)
+    private val muted = Color.rgb(151, 169, 191)
+    private val teal = Color.rgb(0, 205, 190)
 
     private var videoUri: Uri? = null
     private var folderUri: Uri? = null
@@ -120,9 +120,22 @@ class MainActivity : Activity() {
         val layout = page()
         layout.gravity = Gravity.CENTER
 
+        val logo = TextView(this).apply {
+            text = "▶"
+            textSize = 30f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(0, 220, 196), Color.rgb(0, 105, 120))
+            ).apply { cornerRadius = dp(22).toFloat() }
+        }
+        layout.addView(logo, LinearLayout.LayoutParams(dp(76), dp(76)))
+
+        addSpace(layout, 18)
         layout.addView(text("أمير للشاشات", 30f, white, true))
         addSpace(layout, 8)
-        layout.addView(text("AMEER SCREENS", 15f, muted))
+        layout.addView(text("AMEER SCREENS", 14f, muted))
         addSpace(layout, 30)
 
         val input = EditText(this).apply {
@@ -155,9 +168,11 @@ class MainActivity : Activity() {
                     connection.outputStream.use {
                         it.write(JSONObject().put("code", code).toString().toByteArray())
                     }
-                    val response = connection.inputStream.bufferedReader().use { it.readText() }
-                    success = JSONObject(response).optBoolean("activated", false)
-                    message = JSONObject(response).optString("message", "كود غير صحيح")
+                    val response = JSONObject(
+                        connection.inputStream.bufferedReader().use { it.readText() }
+                    )
+                    success = response.optBoolean("activated", false)
+                    message = response.optString("message", "كود غير صحيح")
                     connection.disconnect()
                 } catch (_: Exception) {}
 
@@ -179,6 +194,7 @@ class MainActivity : Activity() {
         setContentView(layout)
     }
 
+    // الواجهة الرئيسية الجديدة
     private fun showHome() {
         root = page()
 
@@ -187,64 +203,98 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
 
+        val logo = TextView(this).apply {
+            text = "▶"
+            textSize = 22f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(0, 220, 196), Color.rgb(0, 100, 125))
+            ).apply { cornerRadius = dp(17).toFloat() }
+        }
+        header.addView(logo, LinearLayout.LayoutParams(dp(54), dp(54)))
+
         val brand = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), 0, 0, 0)
         }
-        brand.addView(text("أمير للشاشات", 25f, white, true))
-        brand.addView(text("مشغل الوسائط الذكي", 12f, muted))
-
+        brand.addView(text("أمير للشاشات", 22f, white, true))
+        brand.addView(text("AMEER SCREENS  •  MEDIA PLAYER", 9f, muted))
         header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
 
-        val status = text("● متصل", 12f, Color.rgb(65, 220, 170), true)
-        status.background = shape(card, 20)
-        status.setPadding(dp(12), dp(9), dp(12), dp(9))
+        val status = text("● جاهز", 11f, Color.rgb(73, 225, 177), true)
+        status.background = shape(Color.rgb(18, 48, 48), 30)
+        status.setPadding(dp(11), dp(9), dp(11), dp(9))
         header.addView(status)
-
         root.addView(header)
+
         addSpace(root, 22)
 
         val hero = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = shape(Color.rgb(17, 74, 91), 22)
-            setPadding(dp(19), dp(19), dp(19), dp(19))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(0, 105, 112), Color.rgb(16, 48, 72), Color.rgb(20, 34, 58))
+            ).apply { cornerRadius = dp(24).toFloat() }
+            setPadding(dp(20), dp(21), dp(20), dp(20))
         }
 
-        hero.addView(text("أهلاً بك في أمير للشاشات", 21f, white, true))
+        hero.addView(text("عالم الترفيه بين إيديك", 22f, white, true))
         addSpace(hero, 7)
-        hero.addView(text("كل ملفاتك ووسائطك في مكان واحد", 13f,
-            Color.rgb(215, 235, 240)))
-        addSpace(hero, 15)
+        hero.addView(text("شغّل فيديوهاتك واستمتع بملفاتك\nمن مكان واحد وبسهولة.", 13f,
+            Color.rgb(218, 235, 240)))
+        addSpace(hero, 18)
 
-        val open = TextView(this).apply {
-            text = "▶   اختر فيديو وابدأ المشاهدة"
-            textSize = 14f
+        val chooseVideo = TextView(this).apply {
+            text = "▶    اختر فيديو الآن"
+            textSize = 15f
             gravity = Gravity.CENTER
             setTextColor(white)
             setTypeface(null, Typeface.BOLD)
-            background = shape(Color.rgb(0, 145, 143), 12)
-            setPadding(dp(12), dp(14), dp(12), dp(14))
+            background = shape(Color.rgb(0, 165, 155), 14)
+            setPadding(dp(12), dp(15), dp(12), dp(15))
             setOnClickListener { pickVideo() }
         }
-        hero.addView(open)
+        hero.addView(chooseVideo)
         root.addView(hero)
 
-        addSpace(root, 23)
-        root.addView(text("مشغل الفيديو", 19f, white, true))
-        addSpace(root, 10)
+        addSpace(root, 24)
+
+        val playerTitle = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        playerTitle.addView(text("مشغل الفيديو", 19f, white, true),
+            LinearLayout.LayoutParams(0, -2, 1f))
+        playerTitle.addView(text("VIDEO PLAYER", 9f, teal, true))
+        root.addView(playerTitle)
+        addSpace(root, 11)
 
         val playerCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = shape(card, 18)
-            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = shape(Color.rgb(15, 23, 37), 20)
+            setPadding(dp(11), dp(11), dp(11), dp(13))
         }
 
+        val videoFrame = FrameLayout(this).apply {
+            background = shape(Color.rgb(3, 8, 15), 15)
+        }
         videoView = VideoView(this)
-        playerCard.addView(videoView, LinearLayout.LayoutParams(-1, dp(190)))
+        videoFrame.addView(videoView, FrameLayout.LayoutParams(-1, dp(190)))
+        playerCard.addView(videoFrame, LinearLayout.LayoutParams(-1, dp(190)))
 
-        playerCard.addView(text(videoName, 13f, muted).apply {
-            gravity = Gravity.CENTER
-            setPadding(0, dp(12), 0, dp(10))
-        })
+        val nameRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(4), dp(13), dp(4), dp(11))
+        }
+        val nameText = text(videoName, 12f, muted)
+        nameText.maxLines = 1
+        nameText.ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
+        nameRow.addView(nameText, LinearLayout.LayoutParams(0, -2, 1f))
+        nameRow.addView(text("●", 10f, teal))
+        playerCard.addView(nameRow)
 
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -257,11 +307,11 @@ class MainActivity : Activity() {
                 textSize = 18f
                 gravity = Gravity.CENTER
                 setTextColor(white)
-                background = shape(Color.rgb(39, 55, 80), 12)
-                setPadding(dp(20), dp(10), dp(20), dp(10))
+                background = shape(Color.rgb(34, 49, 69), 13)
+                setPadding(dp(12), dp(12), dp(12), dp(12))
                 setOnClickListener { action() }
             }
-            controls.addView(b, LinearLayout.LayoutParams(0, -2, 1f).apply {
+            controls.addView(b, LinearLayout.LayoutParams(0, dp(47), 1f).apply {
                 marginStart = dp(4)
                 marginEnd = dp(4)
             })
@@ -272,12 +322,19 @@ class MainActivity : Activity() {
         }
         control("Ⅱ") { videoView?.pause() }
         control("■") { videoView?.stopPlayback() }
-
         playerCard.addView(controls)
         root.addView(playerCard)
 
-        addSpace(root, 24)
-        root.addView(text("الأقسام الرئيسية", 19f, white, true))
+        addSpace(root, 25)
+
+        val sectionTitle = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        sectionTitle.addView(text("استكشف الأقسام", 19f, white, true),
+            LinearLayout.LayoutParams(0, -2, 1f))
+        sectionTitle.addView(text("6 أقسام", 11f, muted))
+        root.addView(sectionTitle)
         addSpace(root, 12)
 
         val grid = GridLayout(this).apply {
@@ -294,56 +351,72 @@ class MainActivity : Activity() {
         ) {
             val box = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                background = shape(color, 18)
-                setPadding(dp(13), dp(17), dp(13), dp(17))
+                background = shape(color, 19)
+                setPadding(dp(15), dp(15), dp(12), dp(14))
                 isClickable = true
                 isFocusable = true
                 setOnClickListener { action() }
             }
 
-            box.addView(text(emoji, 27f))
-            addSpace(box, 10)
-            box.addView(text(title, 16f, white, true))
+            val iconBox = TextView(this).apply {
+                text = emoji
+                textSize = 25f
+                gravity = Gravity.CENTER
+                background = shape(Color.argb(45, 255, 255, 255), 13)
+            }
+            box.addView(iconBox, LinearLayout.LayoutParams(dp(48), dp(46)))
+            addSpace(box, 12)
+            box.addView(text(title, 15f, white, true))
             addSpace(box, 4)
-            box.addView(text(subtitle, 11f, Color.rgb(225, 230, 240)))
+            box.addView(text(subtitle, 10f, Color.rgb(213, 224, 237)))
 
             val params = GridLayout.LayoutParams().apply {
                 width = 0
-                height = dp(125)
+                height = dp(139)
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                 setMargins(dp(4), dp(4), dp(4), dp(4))
             }
             grid.addView(box, params)
         }
 
-        tile("🎬", "الفيديوهات", "ملفات الفيديو", Color.rgb(42, 65, 112)) {
+        tile("🎬", "الفيديوهات", "تصفح وشغّل الفيديو", Color.rgb(30, 62, 91)) {
             pickVideo()
         }
-        tile("📁", "مدير الملفات", "اختيار مجلد كامل", Color.rgb(26, 104, 103)) {
+        tile("📁", "مدير الملفات", "استعرض مجلداتك", Color.rgb(20, 78, 77)) {
             showFolders()
         }
-        tile("🎵", "الموسيقى", "ملفات الصوت", Color.rgb(104, 65, 125)) {
+        tile("🎵", "الموسيقى", "ملفاتك الصوتية", Color.rgb(66, 48, 91)) {
             pickAudio()
         }
-        tile("🖼️", "الصور", "معرض الصور", Color.rgb(123, 76, 48)) {
+        tile("🖼️", "الصور", "افتح معرض الصور", Color.rgb(88, 57, 43)) {
             pickPhoto()
         }
-        tile("🌐", "متصفح الإنترنت", "فتح صفحات الويب", Color.rgb(39, 91, 112)) {
+        tile("🌐", "متصفح الإنترنت", "تصفح مواقع الويب", Color.rgb(28, 67, 83)) {
             openBrowser()
         }
-        tile("⚙️", "الإعدادات", "إعدادات التطبيق", Color.rgb(70, 78, 96)) {
+        tile("⚙️", "الإعدادات", "تحكم بالتطبيق", Color.rgb(49, 57, 75)) {
             showSettings()
         }
 
         root.addView(grid)
-        addSpace(root, 18)
+        addSpace(root, 21)
 
-        root.addView(text("AMEER SCREENS  •  1.2", 11f, muted).apply {
+        val footerLine = View(this).apply {
+            setBackgroundColor(Color.rgb(35, 49, 67))
+        }
+        root.addView(footerLine, LinearLayout.LayoutParams(-1, dp(1)))
+        addSpace(root, 14)
+        root.addView(text("AMEER SCREENS", 11f, teal, true).apply {
+            gravity = Gravity.CENTER
+        })
+        addSpace(root, 4)
+        root.addView(text("صُنع لتجربة مشاهدة أفضل  •  الإصدار 1.2", 10f, muted).apply {
             gravity = Gravity.CENTER
         })
 
         setContentView(ScrollView(this).apply {
             isFillViewport = true
+            clipToPadding = false
             addView(root)
         })
 
