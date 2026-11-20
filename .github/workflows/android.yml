@@ -26,101 +26,38 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract project
+      - name: Repair Gradle file path
         run: |
-          mkdir -p build-project
-          unzip -q ameer-screens-starter.zip -d build-project
-
-          SETTINGS=$(find build-project -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
-
-          if [ -z "$SETTINGS" ]; then
-            echo "ERROR: Gradle settings not found"
-            exit 1
+          if [ -d "app/build.gradle.kts" ] && [ -f "app/build.gradle.kts/build.gradle.kts" ]; then
+            cp "app/build.gradle.kts/build.gradle.kts" /tmp/ameer-build.gradle.kts
+            rm -rf "app/build.gradle.kts"
+            mv /tmp/ameer-build.gradle.kts "app/build.gradle.kts"
           fi
 
-          PROJECT_DIR=$(dirname "$SETTINGS")
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-      - name: Fix AndroidManifest XML
+      - name: Validate project
         run: |
-          MANIFEST="$PROJECT_DIR/app/src/main/AndroidManifest.xml"
-
-          if [ ! -f "$MANIFEST" ]; then
-            echo "ERROR: Manifest not found"
-            exit 1
-          fi
-
-          python3 - "$MANIFEST" <<'PY'
-          import sys
-          import re
-          from pathlib import Path
-
-          path = Path(sys.argv[1])
-          data = path.read_bytes()
-
-          # Remove UTF-8 BOM if present
-          data = data.removeprefix(b'\xef\xbb\xbf')
-
-          # Remove whitespace and blank lines before XML declaration
-          data = re.sub(rb'^[\x00-\x20]+', b'', data)
-
-          # Ensure XML declaration starts at byte zero
-          if data.startswith(b'<?xml'):
-              path.write_bytes(data)
-              print("Manifest leading characters cleaned")
-          else:
-              raise SystemExit("ERROR: XML declaration not found at file start")
-          PY
-
-      - name: Configure JVM 17
-        run: |
-          FILE="$PROJECT_DIR/app/build.gradle.kts"
-
-          cat >> "$FILE" <<'EOF'
-
-          android {
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-          }
-
-          tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-              kotlinOptions {
-                  jvmTarget = "17"
-              }
-          }
-          EOF
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+          test -f app/src/main/AndroidManifest.xml
+          test -f app/src/main/java/com/ameerscreens/app/MainActivity.kt
 
       - name: Validate Manifest
         run: |
-          python3 - "$PROJECT_DIR/app/src/main/AndroidManifest.xml" <<'PY'
-          import sys
-          import xml.etree.ElementTree as ET
-
-          try:
-              ET.parse(sys.argv[1])
-              print("SUCCESS: AndroidManifest XML is valid")
-          except ET.ParseError as e:
-              print("MANIFEST ERROR:", e)
-              sys.exit(1)
-          PY
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse('app/src/main/AndroidManifest.xml')"
 
       - name: Create Gradle Wrapper
         run: |
-          cd "$PROJECT_DIR"
           gradle wrapper --gradle-version 8.11.1
           chmod +x gradlew
 
       - name: Build APK
-        run: |
-          cd "$PROJECT_DIR"
-          ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ameer-screens-debug-apk
-          path: build-project/**/app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
