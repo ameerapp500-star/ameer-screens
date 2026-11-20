@@ -5,10 +5,12 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.media.MediaPlayer
 import android.net.Uri
-import android.provider.DocumentsContract
 import android.os.Bundle
+import android.provider.DocumentsContract
 import android.view.Gravity
 import android.view.View
 import android.widget.*
@@ -19,26 +21,82 @@ import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
 
-    private val executor = Executors.newSingleThreadExecutor()
     private val serverUrl = "https://ameer-activation.ameerapp500.workers.dev"
+    private val executor = Executors.newSingleThreadExecutor()
 
-    private val pickVideoRequest = 4102
-    private val pickFolderRequest = 4103
-    private val pickAudioRequest = 4104
+    private val VIDEO = 4102
+    private val FOLDER = 4103
+    private val AUDIO = 4104
+    private val PHOTO = 4105
 
-    private var selectedVideo: Uri? = null
-    private var selectedVideoName = "لم يتم اختيار فيديو بعد"
-    private var videoView: VideoView? = null
-    private var playButton: Button? = null
+    private val bg = Color.rgb(8, 13, 27)
+    private val card = Color.rgb(22, 31, 52)
+    private val white = Color.WHITE
+    private val muted = Color.rgb(157, 174, 199)
+
+    private var videoUri: Uri? = null
     private var folderUri: Uri? = null
-    private var audioPlayer: MediaPlayer? = null
-
+    private var player: MediaPlayer? = null
+    private var videoView: VideoView? = null
+    private var videoName = "لم يتم اختيار فيديو"
     private lateinit var root: LinearLayout
 
-    private val bg = Color.rgb(9, 15, 29)
-    private val panel = Color.rgb(20, 31, 51)
-    private val accent = Color.rgb(0, 190, 170)
-    private val muted = Color.rgb(160, 174, 195)
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    private fun shape(color: Int, radius: Int = 18): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(radius).toFloat()
+        }
+    }
+
+    private fun text(
+        value: String,
+        size: Float,
+        color: Int = white,
+        bold: Boolean = false
+    ) = TextView(this).apply {
+        text = value
+        textSize = size
+        setTextColor(color)
+        if (bold) setTypeface(null, Typeface.BOLD)
+    }
+
+    private fun page(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(17), dp(18), dp(17), dp(24))
+            setBackgroundColor(bg)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+    }
+
+    private fun addSpace(parent: LinearLayout, height: Int) {
+        parent.addView(View(this), LinearLayout.LayoutParams(1, dp(height)))
+    }
+
+    private fun addButton(
+        parent: LinearLayout,
+        title: String,
+        color: Int = card,
+        action: () -> Unit
+    ) {
+        val b = TextView(this).apply {
+            text = title
+            textSize = 15f
+            setTextColor(white)
+            gravity = Gravity.CENTER
+            setTypeface(null, Typeface.BOLD)
+            background = shape(color, 14)
+            setPadding(dp(10), dp(15), dp(10), dp(15))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
+        parent.addView(b, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(9)
+        })
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +106,7 @@ class MainActivity : Activity() {
 
         val prefs = getSharedPreferences("ameer", MODE_PRIVATE)
         prefs.getString("folder_uri", null)?.let {
-            try { folderUri = Uri.parse(it) } catch (_: Exception) {}
+            folderUri = Uri.parse(it)
         }
 
         if (prefs.getBoolean("activated", false)) {
@@ -58,557 +116,427 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun dp(value: Int) =
-        (value * resources.displayMetrics.density).toInt()
-
-    private fun basePage() = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(18), dp(18), dp(18), dp(22))
-        setBackgroundColor(bg)
-        layoutDirection = View.LAYOUT_DIRECTION_RTL
-    }
-
-    private fun label(
-        text: String,
-        size: Float,
-        color: Int = Color.WHITE,
-        bold: Boolean = false
-    ) = TextView(this).apply {
-        this.text = text
-        textSize = size
-        setTextColor(color)
-        if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
-    }
-
-    private fun button(text: String, action: () -> Unit) =
-        Button(this).apply {
-            this.text = text
-            isAllCaps = false
-            setOnClickListener { action() }
-        }
-
-    private fun params(
-        width: Int = -1,
-        height: Int = -2,
-        top: Int = 0
-    ) = LinearLayout.LayoutParams(width, height).apply {
-        topMargin = dp(top)
-    }
-
-    private fun pageTitle(title: String, subtitle: String? = null) {
-        root.addView(label(title, 25f, Color.WHITE, true), params(top = 4))
-        if (subtitle != null) {
-            root.addView(label(subtitle, 13f, muted), params(top = 5))
-        }
-    }
-
-    private fun addAction(text: String, action: () -> Unit) {
-        root.addView(button(text, action), params(top = 10))
-    }
-
     private fun showActivation() {
-        val page = basePage().apply { gravity = Gravity.CENTER }
+        val layout = page()
+        layout.gravity = Gravity.CENTER
 
-        page.addView(label("أمير للشاشات", 30f, Color.WHITE, true))
-        page.addView(label(
-            "مشغل الوسائط للهاتف والسيارة", 15f, muted
-        ).apply {
-            gravity = Gravity.CENTER
-            setPadding(0, dp(10), 0, dp(24))
-        })
-
-        val status = label(
-            "نسخة مستقلة - أدخل كود التفعيل", 14f, muted
-        ).apply {
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, dp(16))
-        }
-        page.addView(status)
+        layout.addView(text("أمير للشاشات", 30f, white, true))
+        addSpace(layout, 8)
+        layout.addView(text("AMEER SCREENS", 15f, muted))
+        addSpace(layout, 30)
 
         val input = EditText(this).apply {
             hint = "أدخل كود التفعيل"
-            textSize = 16f
-            setSingleLine(true)
-            setTextColor(Color.WHITE)
+            setTextColor(white)
             setHintTextColor(muted)
-            setPadding(dp(16), dp(13), dp(16), dp(13))
-            setBackgroundColor(panel)
+            setSingleLine(true)
+            background = shape(card)
+            setPadding(dp(15), dp(12), dp(15), dp(12))
         }
-        page.addView(input, params())
+        layout.addView(input, LinearLayout.LayoutParams(-1, -2))
 
-        val activate = button("تفعيل التطبيق") {}
-        page.addView(activate, params(top = 14))
-
-        activate.setOnClickListener {
+        addButton(layout, "تفعيل التطبيق", Color.rgb(0, 155, 145)) {
             val code = input.text.toString().trim()
             if (code.isEmpty()) {
                 input.error = "أدخل كود التفعيل"
-                return@setOnClickListener
+                return@addButton
             }
 
-            activate.isEnabled = false
-            activate.text = "جارٍ التحقق..."
-
             executor.execute {
-                var ok = false
+                var success = false
                 var message = "تعذر الاتصال بالخادم"
-
                 try {
-                    val c = URL(serverUrl).openConnection() as HttpURLConnection
-                    c.requestMethod = "POST"
-                    c.connectTimeout = 15000
-                    c.readTimeout = 15000
-                    c.doOutput = true
-                    c.setRequestProperty("Content-Type", "application/json")
-
-                    c.outputStream.use {
-                        it.write(
-                            JSONObject().put("code", code)
-                                .toString().toByteArray(Charsets.UTF_8)
-                        )
+                    val connection = URL(serverUrl).openConnection() as HttpURLConnection
+                    connection.requestMethod = "POST"
+                    connection.connectTimeout = 15000
+                    connection.readTimeout = 15000
+                    connection.doOutput = true
+                    connection.setRequestProperty("Content-Type", "application/json")
+                    connection.outputStream.use {
+                        it.write(JSONObject().put("code", code).toString().toByteArray())
                     }
-
-                    val rc = c.responseCode
-                    val stream = if (rc in 200..299) c.inputStream else c.errorStream
-                    val response = stream?.bufferedReader()?.use { it.readText() } ?: ""
-                    c.disconnect()
-
-                    if (response.isNotBlank()) {
-                        val result = JSONObject(response)
-                        ok = rc == 200 && result.optBoolean("activated", false)
-                        message = result.optString("message", "كود التفعيل غير صحيح")
-                    }
-                } catch (_: Exception) {
-                    message = "تعذر الاتصال بالخادم"
-                }
+                    val response = connection.inputStream.bufferedReader().use { it.readText() }
+                    success = JSONObject(response).optBoolean("activated", false)
+                    message = JSONObject(response).optString("message", "كود غير صحيح")
+                    connection.disconnect()
+                } catch (_: Exception) {}
 
                 runOnUiThread {
-                    activate.isEnabled = true
-                    activate.text = "تفعيل التطبيق"
-
-                    if (ok) {
+                    if (success) {
                         getSharedPreferences("ameer", MODE_PRIVATE)
                             .edit().putBoolean("activated", true).apply()
                         showHome()
                     } else {
-                        status.text = message
-                        status.setTextColor(Color.RED)
+                        AlertDialog.Builder(this)
+                            .setMessage(message)
+                            .setPositiveButton("حسناً", null)
+                            .show()
                     }
                 }
             }
         }
 
-        setContentView(page)
+        setContentView(layout)
     }
 
     private fun showHome() {
-        root = basePage()
+        root = page()
 
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
 
         val brand = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
-        brand.addView(label("أمير للشاشات", 26f, Color.WHITE, true))
-        brand.addView(label("AMEER SCREENS PLAYER", 11f, muted))
+        brand.addView(text("أمير للشاشات", 25f, white, true))
+        brand.addView(text("مشغل الوسائط الذكي", 12f, muted))
 
         header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
-        header.addView(label("● جاهز", 13f, accent, true).apply {
-            setPadding(dp(12), dp(8), dp(12), dp(8))
-            setBackgroundColor(panel)
-        })
+
+        val status = text("● متصل", 12f, Color.rgb(65, 220, 170), true)
+        status.background = shape(card, 20)
+        status.setPadding(dp(12), dp(9), dp(12), dp(9))
+        header.addView(status)
+
         root.addView(header)
+        addSpace(root, 22)
 
         val hero = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(18))
-            setBackgroundColor(Color.rgb(17, 52, 68))
+            background = shape(Color.rgb(17, 74, 91), 22)
+            setPadding(dp(19), dp(19), dp(19), dp(19))
         }
-        hero.addView(label("مشاهدة الوسائط", 22f, Color.WHITE, true))
-        hero.addView(label(
-            "افتح ملفات الفيديو والصوت من جهازك",
-            14f, Color.rgb(205, 224, 232)
-        ).apply {
-            setPadding(0, dp(7), 0, dp(12))
-        })
-        hero.addView(button("＋ اختيار فيديو", ::openVideoPicker),
-            params(height = dp(48)))
-        root.addView(hero, params(top = 22))
 
-        root.addView(label("التشغيل الآن", 19f, Color.WHITE, true), params(top = 22))
+        hero.addView(text("أهلاً بك في أمير للشاشات", 21f, white, true))
+        addSpace(hero, 7)
+        hero.addView(text("كل ملفاتك ووسائطك في مكان واحد", 13f,
+            Color.rgb(215, 235, 240)))
+        addSpace(hero, 15)
+
+        val open = TextView(this).apply {
+            text = "▶   اختر فيديو وابدأ المشاهدة"
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setTextColor(white)
+            setTypeface(null, Typeface.BOLD)
+            background = shape(Color.rgb(0, 145, 143), 12)
+            setPadding(dp(12), dp(14), dp(12), dp(14))
+            setOnClickListener { pickVideo() }
+        }
+        hero.addView(open)
+        root.addView(hero)
+
+        addSpace(root, 23)
+        root.addView(text("مشغل الفيديو", 19f, white, true))
+        addSpace(root, 10)
 
         val playerCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            background = shape(card, 18)
             setPadding(dp(12), dp(12), dp(12), dp(12))
-            setBackgroundColor(panel)
         }
 
         videoView = VideoView(this)
-        playerCard.addView(videoView, params(height = dp(205)))
-        playerCard.addView(label(selectedVideoName, 14f, muted).apply {
+        playerCard.addView(videoView, LinearLayout.LayoutParams(-1, dp(190)))
+
+        playerCard.addView(text(videoName, 13f, muted).apply {
             gravity = Gravity.CENTER
-            setPadding(0, dp(12), 0, dp(8))
+            setPadding(0, dp(12), 0, dp(10))
         })
 
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            layoutDirection = View.LAYOUT_DIRECTION_LTR
         }
 
-        val replay = button("↺") {
-            videoView?.seekTo(0)
-            videoView?.start()
-            playButton?.text = "Ⅱ"
-        }
-
-        playButton = button("▶") {
-            if (selectedVideo == null) {
-                openVideoPicker()
-            } else if (videoView?.isPlaying == true) {
-                videoView?.pause()
-                playButton?.text = "▶"
-            } else {
-                videoView?.start()
-                playButton?.text = "Ⅱ"
+        fun control(label: String, action: () -> Unit) {
+            val b = TextView(this).apply {
+                text = label
+                textSize = 18f
+                gravity = Gravity.CENTER
+                setTextColor(white)
+                background = shape(Color.rgb(39, 55, 80), 12)
+                setPadding(dp(20), dp(10), dp(20), dp(10))
+                setOnClickListener { action() }
             }
+            controls.addView(b, LinearLayout.LayoutParams(0, -2, 1f).apply {
+                marginStart = dp(4)
+                marginEnd = dp(4)
+            })
         }
 
-        val stop = button("■") {
-            videoView?.stopPlayback()
-            selectedVideo?.let { videoView?.setVideoURI(it) }
-            playButton?.text = "▶"
+        control("▶") {
+            if (videoUri == null) pickVideo() else videoView?.start()
         }
-
-        listOf(replay, playButton!!, stop).forEach {
-            controls.addView(it, LinearLayout.LayoutParams(0, dp(48), 1f))
-        }
+        control("Ⅱ") { videoView?.pause() }
+        control("■") { videoView?.stopPlayback() }
 
         playerCard.addView(controls)
-        root.addView(playerCard, params(top = 10))
-        root.addView(label("الأقسام", 19f, Color.WHITE, true), params(top = 22))
+        root.addView(playerCard)
 
-        addHomeTile("🎬 الفيديوهات", "اختيار وتشغيل ملفات الفيديو", ::showVideos)
-        addHomeTile("📁 المجلدات", "اختيار مجلد من ذاكرة الجهاز", ::showFolders)
-        addHomeTile("🎵 الموسيقى", "اختيار ملف صوتي وتشغيله", ::showMusic)
-        addHomeTile("⚙ الإعدادات", "خيارات التطبيق ومعلوماته", ::showSettings)
+        addSpace(root, 24)
+        root.addView(text("الأقسام الرئيسية", 19f, white, true))
+        addSpace(root, 12)
 
-        root.addView(label("أمير للشاشات • الإصدار 1.1", 11f, muted).apply {
-            gravity = Gravity.CENTER
-            setPadding(0, dp(20), 0, 0)
-        }, params(top = 8))
-
-        setContentView(ScrollView(this).apply { addView(root) })
-        selectedVideo?.let { videoView?.setVideoURI(it) }
-    }
-
-    private fun addHomeTile(title: String, description: String, action: () -> Unit) {
-        val tile = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(15), dp(12), dp(15), dp(12))
-            setBackgroundColor(panel)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { action() }
+        val grid = GridLayout(this).apply {
+            columnCount = 2
+            useDefaultMargins = false
         }
-        tile.addView(label(title, 17f, Color.WHITE, true))
-        tile.addView(label(description, 12f, muted).apply {
-            setPadding(0, dp(4), 0, 0)
-        })
-        root.addView(tile, params(top = 8))
-    }
 
-    private fun showVideos() {
-        root = basePage()
-        pageTitle("الفيديوهات", "اختر فيديو من جهازك أو شغّل الفيديو المحدد")
-        addAction("＋ اختيار فيديو", ::openVideoPicker)
-
-        val current = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(14), dp(14), dp(14))
-            setBackgroundColor(panel)
-        }
-        current.addView(label("الفيديو المحدد", 16f, Color.WHITE, true))
-        current.addView(label(selectedVideoName, 13f, muted).apply {
-            setPadding(0, dp(8), 0, dp(8))
-        })
-
-        addInlineButton(current, "تشغيل") {
-            val uri = selectedVideo
-            if (uri == null) {
-                openVideoPicker()
-            } else {
-                showHome()
-                videoView?.setVideoURI(uri)
-                videoView?.start()
-                playButton?.text = "Ⅱ"
+        fun tile(
+            emoji: String,
+            title: String,
+            subtitle: String,
+            color: Int,
+            action: () -> Unit
+        ) {
+            val box = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = shape(color, 18)
+                setPadding(dp(13), dp(17), dp(13), dp(17))
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { action() }
             }
+
+            box.addView(text(emoji, 27f))
+            addSpace(box, 10)
+            box.addView(text(title, 16f, white, true))
+            addSpace(box, 4)
+            box.addView(text(subtitle, 11f, Color.rgb(225, 230, 240)))
+
+            val params = GridLayout.LayoutParams().apply {
+                width = 0
+                height = dp(125)
+                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                setMargins(dp(4), dp(4), dp(4), dp(4))
+            }
+            grid.addView(box, params)
         }
 
-        root.addView(current, params(top = 18))
-        addAction("رجوع للرئيسية", ::showHome)
-        setContentView(ScrollView(this).apply { addView(root) })
+        tile("🎬", "الفيديوهات", "ملفات الفيديو", Color.rgb(42, 65, 112)) {
+            pickVideo()
+        }
+        tile("📁", "مدير الملفات", "اختيار مجلد كامل", Color.rgb(26, 104, 103)) {
+            showFolders()
+        }
+        tile("🎵", "الموسيقى", "ملفات الصوت", Color.rgb(104, 65, 125)) {
+            pickAudio()
+        }
+        tile("🖼️", "الصور", "معرض الصور", Color.rgb(123, 76, 48)) {
+            pickPhoto()
+        }
+        tile("🌐", "متصفح الإنترنت", "فتح صفحات الويب", Color.rgb(39, 91, 112)) {
+            openBrowser()
+        }
+        tile("⚙️", "الإعدادات", "إعدادات التطبيق", Color.rgb(70, 78, 96)) {
+            showSettings()
+        }
+
+        root.addView(grid)
+        addSpace(root, 18)
+
+        root.addView(text("AMEER SCREENS  •  1.2", 11f, muted).apply {
+            gravity = Gravity.CENTER
+        })
+
+        setContentView(ScrollView(this).apply {
+            isFillViewport = true
+            addView(root)
+        })
+
+        videoUri?.let { videoView?.setVideoURI(it) }
     }
 
     private fun showFolders() {
-        root = basePage()
-        pageTitle("المجلدات", "اختر مجلداً من ذاكرة الجهاز")
+        root = page()
+        root.addView(text("مدير الملفات", 24f, white, true))
+        addSpace(root, 8)
+        root.addView(text("اختَر مجلداً كاملاً لعرض الفيديوهات الموجودة بداخله", 13f, muted))
 
-        root.addView(label(
-            if (folderUri != null)
-                "المجلد المحدد: ${folderUri?.lastPathSegment ?: "مجلد الجهاز"}"
-            else
-                "اختَر مجلداً كاملاً لعرض ملفات الفيديو الموجودة بداخله",
-            14f, muted
-        ), params(top = 16))
+        addButton(root, "📁 اختيار مجلد من الجهاز", Color.rgb(0, 125, 125)) {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            startActivityForResult(intent, FOLDER)
+        }
 
-        addAction("📁 اختيار مجلد كامل", ::openFolderPicker)
-        addAction("تحديث محتويات المجلد") {
-            folderUri?.let { showFolderContents(it) }
+        addButton(root, "عرض محتويات المجلد المحدد") {
+            folderUri?.let { listVideos(it) }
                 ?: Toast.makeText(this, "اختَر مجلداً أولاً", Toast.LENGTH_SHORT).show()
         }
-        addAction("رجوع للرئيسية", ::showHome)
+
+        addButton(root, "رجوع للرئيسية") { showHome() }
 
         setContentView(ScrollView(this).apply { addView(root) })
-        folderUri?.let { showFolderContents(it) }
+
+        folderUri?.let { listVideos(it) }
     }
 
-    private fun showFolderContents(treeUri: Uri) {
-        val section = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            setBackgroundColor(panel)
-        }
-        section.addView(label("محتويات المجلد", 17f, Color.WHITE, true))
-        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        section.addView(list, params(top = 8))
-
+    private fun listVideos(tree: Uri) {
         try {
-            val treeId = DocumentsContract.getTreeDocumentId(treeUri)
-            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeId)
-            val projection = arrayOf(
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                DocumentsContract.Document.COLUMN_MIME_TYPE
-            )
+            val treeId = DocumentsContract.getTreeDocumentId(tree)
+            val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, treeId)
 
-            contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+            contentResolver.query(
+                children,
+                arrayOf(
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE
+                ),
+                null, null, null
+            )?.use { cursor ->
+
                 var count = 0
-                val idCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                val nameCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                val mimeCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
 
                 while (cursor.moveToNext()) {
-                    val docId = cursor.getString(idCol)
-                    val name = cursor.getString(nameCol) ?: "ملف بدون اسم"
-                    val mime = cursor.getString(mimeCol) ?: ""
+                    val id = cursor.getString(0)
+                    val name = cursor.getString(1) ?: "فيديو"
+                    val mime = cursor.getString(2) ?: ""
 
-                    if (mime.startsWith("video/") ||
-                        name.substringAfterLast('.', "").lowercase() in
-                        listOf("mp4", "mkv", "avi", "mov", "webm", "3gp", "m4v")) {
+                    if (mime.startsWith("video/")) {
                         count++
-                        val fileUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId)
-                        list.addView(button("▶  $name") {
-                            selectedVideo = fileUri
-                            selectedVideoName = name
+                        val uri = DocumentsContract.buildDocumentUriUsingTree(tree, id)
+
+                        addButton(root, "▶   $name") {
+                            videoUri = uri
+                            videoName = name
                             showHome()
-                            videoView?.setVideoURI(fileUri)
+                            videoView?.setVideoURI(uri)
                             videoView?.start()
-                            playButton?.text = "Ⅱ"
-                        }, params(top = 6))
+                        }
                     }
                 }
 
                 if (count == 0) {
-                    list.addView(label(
-                        "ما لكيت ملفات فيديو مباشرة بهذا المجلد. جرّب مجلداً يحتوي فيديوهات.",
-                        13f, muted
-                    ))
-                } else {
-                    section.addView(label("عدد الفيديوهات: $count", 12f, accent), params(top = 8))
+                    addSpace(root, 15)
+                    root.addView(text("لا توجد فيديوهات مباشرة داخل هذا المجلد", 13f, muted))
                 }
-            } ?: list.addView(label("تعذر قراءة محتويات هذا المجلد.", 13f, muted))
-        } catch (e: Exception) {
-            list.addView(label(
-                "تعذر عرض الملفات: ${e.message ?: "خطأ غير معروف"}",
-                13f, muted
-            ))
+            }
+        } catch (_: Exception) {
+            Toast.makeText(this, "تعذر قراءة المجلد", Toast.LENGTH_SHORT).show()
         }
-
-        root.addView(section, params(top = 16))
-    }
-
-    private fun showMusic() {
-        root = basePage()
-        pageTitle("الموسيقى", "اختر ملفاً صوتياً من جهازك")
-        addAction("＋ اختيار ملف صوتي", ::openAudioPicker)
-
-        addAction("إيقاف الصوت") {
-            audioPlayer?.stop()
-            audioPlayer?.release()
-            audioPlayer = null
-            Toast.makeText(this, "تم إيقاف الصوت", Toast.LENGTH_SHORT).show()
-        }
-
-        addAction("رجوع للرئيسية", ::showHome)
-        setContentView(root)
     }
 
     private fun showSettings() {
-        root = basePage()
-        pageTitle("الإعدادات", "إعدادات تطبيق أمير للشاشات")
+        root = page()
+        root.addView(text("الإعدادات", 24f, white, true))
 
         val prefs = getSharedPreferences("ameer", MODE_PRIVATE)
 
-        val keepScreen = Switch(this).apply {
-            text = "إبقاء الشاشة مضاءة أثناء الاستخدام"
-            setTextColor(Color.WHITE)
+        val keep = Switch(this).apply {
+            text = "إبقاء الشاشة مضاءة"
+            setTextColor(white)
             isChecked = prefs.getBoolean("keep_screen", true)
             setOnCheckedChangeListener { _, checked ->
                 prefs.edit().putBoolean("keep_screen", checked).apply()
-                applyKeepScreen(checked)
+                if (checked) {
+                    window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
             }
         }
-        root.addView(keepScreen, params(top = 18))
 
-        val autoPlay = Switch(this).apply {
-            text = "تشغيل الفيديو تلقائياً بعد الاختيار"
-            setTextColor(Color.WHITE)
-            isChecked = prefs.getBoolean("auto_play", false)
-            setOnCheckedChangeListener { _, checked ->
-                prefs.edit().putBoolean("auto_play", checked).apply()
-            }
-        }
-        root.addView(autoPlay, params(top = 12))
-
-        addAction("معلومات التطبيق") {
+        addSpace(root, 15)
+        root.addView(keep)
+        addButton(root, "معلومات التطبيق") {
             AlertDialog.Builder(this)
                 .setTitle("أمير للشاشات")
-                .setMessage(
-                    "الإصدار 1.1\nمشغل وسائط للهاتف.\nالفيديوهات والمجلدات والموسيقى والإعدادات."
-                )
+                .setMessage("مشغل الوسائط - الإصدار 1.2")
                 .setPositiveButton("حسناً", null)
                 .show()
         }
+        addButton(root, "رجوع للرئيسية") { showHome() }
 
-        addAction("رجوع للرئيسية", ::showHome)
         setContentView(root)
     }
 
-    private fun applyKeepScreen(enabled: Boolean) {
-        if (enabled) {
-            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
-
-    private fun addInlineButton(parent: LinearLayout, text: String, action: () -> Unit) {
-        parent.addView(button(text, action), params(top = 8))
-    }
-
-    private fun openVideoPicker() {
+    private fun pickVideo() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "video/*"
         }
-        startActivityForResult(intent, pickVideoRequest)
+        startActivityForResult(intent, VIDEO)
     }
 
-    private fun openFolderPicker() {
-        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), pickFolderRequest)
-    }
-
-    private fun openAudioPicker() {
+    private fun pickAudio() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "audio/*"
         }
-        startActivityForResult(intent, pickAudioRequest)
+        startActivityForResult(intent, AUDIO)
     }
 
-    @Deprecated("Deprecated API retained for broad Android compatibility")
-    override fun onActivityResult(
-        requestCode: Int,
-        resultCode: Int,
-        data: Intent?
-    ) {
+    private fun pickPhoto() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "image/*"
+        }
+        startActivityForResult(intent, PHOTO)
+    }
+
+    private fun openBrowser() {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com")))
+        } catch (_: Exception) {
+            Toast.makeText(this, "تعذر فتح المتصفح", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    @Deprecated("Legacy document picker callback")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+
         if (resultCode != RESULT_OK || data?.data == null) return
 
         val uri = data.data!!
 
-        when (requestCode) {
-            pickVideoRequest -> {
-                selectedVideo = uri
-                try {
-                    contentResolver.takePersistableUriPermission(
-                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+        try {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                data.flags and (
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                     )
-                } catch (_: Exception) {}
+            )
+        } catch (_: Exception) {}
 
-                selectedVideoName = uri.lastPathSegment?.substringAfterLast('/')
-                    ?: "تم اختيار فيديو"
-
+        when (requestCode) {
+            VIDEO -> {
+                videoUri = uri
+                videoName = uri.lastPathSegment?.substringAfterLast('/') ?: "فيديو محدد"
                 showHome()
                 videoView?.setVideoURI(uri)
-
-                if (getSharedPreferences("ameer", MODE_PRIVATE)
-                        .getBoolean("auto_play", false)) {
-                    videoView?.start()
-                    playButton?.text = "Ⅱ"
-                }
-
-                Toast.makeText(this, "تم اختيار الفيديو", Toast.LENGTH_SHORT).show()
+                videoView?.start()
             }
 
-            pickFolderRequest -> {
+            FOLDER -> {
                 folderUri = uri
-                getSharedPreferences("ameer", MODE_PRIVATE).edit()
-                    .putString("folder_uri", uri.toString()).apply()
-
-                try {
-                    contentResolver.takePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                    )
-                } catch (_: Exception) {}
-
+                getSharedPreferences("ameer", MODE_PRIVATE)
+                    .edit().putString("folder_uri", uri.toString()).apply()
                 showFolders()
-                Toast.makeText(this, "تم حفظ اختيار المجلد", Toast.LENGTH_SHORT).show()
             }
 
-            pickAudioRequest -> {
+            AUDIO -> {
                 try {
-                    audioPlayer?.release()
-                    audioPlayer = MediaPlayer().apply {
+                    player?.release()
+                    player = MediaPlayer().apply {
                         setDataSource(this@MainActivity, uri)
-                        setOnPreparedListener {
-                            it.start()
-                            Toast.makeText(
-                                this@MainActivity,
-                                "بدأ تشغيل الصوت",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                        setOnErrorListener { _, _, _ ->
-                            Toast.makeText(
-                                this@MainActivity,
-                                "تعذر تشغيل الملف الصوتي",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            true
-                        }
+                        setOnPreparedListener { it.start() }
                         prepareAsync()
                     }
                 } catch (_: Exception) {
-                    Toast.makeText(this, "تعذر فتح الملف الصوتي", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "تعذر تشغيل الصوت", Toast.LENGTH_SHORT).show()
                 }
+            }
+
+            PHOTO -> {
+                startActivity(Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "image/*")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                })
             }
         }
     }
@@ -617,12 +545,12 @@ class MainActivity : Activity() {
         super.onResume()
         if (getSharedPreferences("ameer", MODE_PRIVATE)
                 .getBoolean("keep_screen", true)) {
-            applyKeepScreen(true)
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
     override fun onDestroy() {
-        try { audioPlayer?.release() } catch (_: Exception) {}
+        try { player?.release() } catch (_: Exception) {}
         executor.shutdown()
         super.onDestroy()
     }
