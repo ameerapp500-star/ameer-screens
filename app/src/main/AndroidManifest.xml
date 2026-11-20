@@ -1,3 +1,4 @@
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -9,8 +10,8 @@
     <application
         android:allowBackup="false"
         android:label="أمير للشاشات"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher"
+        android:icon="@android:drawable/ic_media_play"
+        android:roundIcon="@android:drawable/ic_media_play"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
