@@ -1,0 +1,54 @@
+name: Reverse engineer uploaded Ameer Screens APK
+
+on:
+  push:
+    paths:
+      - ".github/workflows/reverse-engineer-uploaded-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  decompile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the exact uploaded archive
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 \
+            "https://raw.githubusercontent.com/ameerapp500-star/ameer-screens/main/Ameer-Screens-APK.zip" \
+            -o uploaded.zip
+          unzip -q uploaded.zip -d input
+          test -f input/app-debug.apk
+          sha256sum input/app-debug.apk | tee apk-sha256.txt
+
+      - name: Install JADX
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq unzip zip
+          URL="$(curl -fsSL https://api.github.com/repos/skylot/jadx/releases/latest | jq -r '.assets[] | select(.name | test("^jadx-.*[.]zip$")) | .browser_download_url' | head -n 1)"
+          test -n "$URL"
+          curl -L --fail "$URL" -o jadx.zip
+          mkdir jadx
+          unzip -q jadx.zip -d jadx
+          chmod +x jadx/bin/jadx
+
+      - name: Decompile APK and collect app resources
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          ./jadx/bin/jadx --show-bad-code -d output/decompiled input/app-debug.apk
+          cp apk-sha256.txt output/
+          find output/decompiled -maxdepth 4 -type f | sort > output/file-list.txt
+          grep -RniE "deviceId|activate|activation|AndroidAuto|CarAppService|Session" output/decompiled > output/important-symbols.txt || true
+          zip -qr ameer-apk-decompiled.zip output
+
+      - name: Upload decompiled sources for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: ameer-apk-decompiled
+          path: ameer-apk-decompiled.zip
+          if-no-files-found: error
+          retention-days: 14
