@@ -43,7 +43,7 @@ jobs:
           test -f input/app-debug.apk
           URL="$(curl -fsSL https://api.github.com/repos/skylot/jadx/releases/latest | jq -r '.assets[] | select(.name | test("^jadx-.*[.]zip$")) | .browser_download_url' | head -n 1)"
           test -n "$URL"
-          curl -L --fail "$URL" -o jadx.zip
+          curl -L --fail --retry 6 --retry-all-errors --retry-delay 3 "$URL" -o jadx.zip
           mkdir jadx
           unzip -q jadx.zip -d jadx
           chmod +x jadx/bin/jadx
