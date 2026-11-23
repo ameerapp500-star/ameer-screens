@@ -140,10 +140,6 @@ class MainActivity : Activity() {
             grantResults.isNotEmpty() &&
             grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
         ) {
-            try {
-                androidx.media.MediaBrowserServiceCompat::class.java
-                sendBroadcast(Intent("com.ameerscreens.app.AUDIO_PERMISSION_GRANTED"))
-            } catch (_: Exception) {}
             Toast.makeText(this, "تم السماح بالوصول إلى ملفات الصوت", Toast.LENGTH_SHORT).show()
         }
     }
