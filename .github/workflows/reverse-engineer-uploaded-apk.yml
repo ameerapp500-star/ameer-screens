@@ -39,9 +39,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p output
+          set +e
           ./jadx/bin/jadx --show-bad-code -d output/decompiled input/app-debug.apk
+          JADX_EXIT=$?
+          set -e
+          echo "JADX exit code: $JADX_EXIT" | tee output/decompiler-status.txt
+          test -d output/decompiled
           cp apk-sha256.txt output/
-          find output/decompiled -maxdepth 4 -type f | sort > output/file-list.txt
+          find output/decompiled -type f | sort > output/file-list.txt
           grep -RniE "deviceId|activate|activation|AndroidAuto|CarAppService|Session" output/decompiled > output/important-symbols.txt || true
           zip -qr ameer-apk-decompiled.zip output
 
