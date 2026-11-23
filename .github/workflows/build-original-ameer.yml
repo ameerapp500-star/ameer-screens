@@ -32,11 +32,34 @@ jobs:
           cp patches/AutoService.java app/src/main/java/com/carscreens/app/AutoService.java
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
+          # Declare the permissions required by the original app's radio and
+          # local-audio features. READ_EXTERNAL_STORAGE is legacy-only.
+          manifest = Path('app/src/main/AndroidManifest.xml')
+          xml = manifest.read_text()
+          marker = '<application'
+          if marker not in xml:
+              raise SystemExit('AndroidManifest.xml has no <application> element')
+          permissions = [
+              'android.permission.INTERNET',
+              'android.permission.READ_MEDIA_AUDIO',
+          ]
+          for permission in permissions:
+              tag = f'<uses-permission android:name="{permission}" />'
+              if permission not in xml:
+                  xml = xml.replace(marker, tag + '\\n    ' + marker, 1)
+          legacy = 'android.permission.READ_EXTERNAL_STORAGE'
+          if legacy not in xml:
+              tag = '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />'
+              xml = xml.replace(marker, tag + '\\n    ' + marker, 1)
+          manifest.write_text(xml)
+
+          # Ask the user for local audio access on first launch.
           p = Path('app/src/main/java/com/carscreens/app/MainActivity.java')
           s = p.read_text()
           old = '    super.onCreate(b);'
           new = '''    super.onCreate(b);
-              // Request audio-library access so Android Auto can browse local music.
               if (Build.VERSION.SDK_INT >= 33) {
                 if (checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED)
                   requestPermissions(new String[]{Manifest.permission.READ_MEDIA_AUDIO}, 77);
@@ -70,6 +93,8 @@ jobs:
           test -f app/src/main/assets/index.html
           test -f app/src/main/java/com/carscreens/app/MainActivity.java
           test -f app/src/main/java/com/carscreens/app/AutoService.java
+          grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.READ_MEDIA_AUDIO' app/src/main/AndroidManifest.xml
 
       - name: Create Gradle wrapper
         run: |
@@ -87,6 +112,6 @@ jobs:
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: ameer-screens-car-media-v2
+          name: ameer-screens-car-media-v3
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
