@@ -93,8 +93,23 @@ public class AutoService extends MediaBrowserService {
       try{
         int B=MediaBrowser.MediaItem.FLAG_BROWSABLE,P=MediaBrowser.MediaItem.FLAG_PLAYABLE;
         if("root".equals(parent)){
+          // Android Auto MEDIA category opens this MediaBrowser tree (not AmeerHomeScreen).
+          // Keep the original app's complete top-level menu visible in the car browser.
+          out.add(item("yt","يوتيوب","محتوى يوتيوب",B));
+          out.add(item("web","متصفح الويب","تصفح الإنترنت",B));
+          out.add(item("tv","تلفزيون","القنوات التلفزيونية",B));
+          out.add(item("movies","الأفلام والمسلسلات","مكتبة الفيديو",B));
+          out.add(item("files","مدير الملفات","ملفات الهاتف",B));
+          out.add(item("video","مشغل الفيديو","تشغيل ملفات الفيديو",B));
+          out.add(item("photos","معرض الصور","صور الهاتف",B));
           out.add(item("radio","الراديو","محطات إذاعية من الإنترنت",B));
           out.add(item("music","الموسيقى","الأغاني الموجودة على الهاتف",B));
+          out.add(item("news","الأخبار","مصادر الأخبار",B));
+          out.add(item("kids","يوتيوب كدز","محتوى الأطفال",B));
+          out.add(item("maps","الخرائط","خرائط ومواقع",B));
+          out.add(item("apps","تطبيقاتي","التطبيقات المضافة",B));
+          out.add(item("mirror","انعكاس الشاشة","عرض شاشة الهاتف",B));
+          out.add(item("set","الإعدادات","إعدادات أمير للشاشات",B));
         }else if("radio".equals(parent)){
           JSONArray a=new JSONArray(httpGet("countries?hidebroken=true"));
           List<JSONObject> countries=new ArrayList<>();
@@ -114,6 +129,13 @@ public class AutoService extends MediaBrowserService {
           }
           synchronized(queue){queue.clear();queue.addAll(found);}
           synchronized(knownTracks){for(Track t:found)knownTracks.put(t.id,t);}
+        }else if("yt".equals(parent)||"web".equals(parent)||"tv".equals(parent)
+          ||"movies".equals(parent)||"files".equals(parent)||"video".equals(parent)
+          ||"photos".equals(parent)||"news".equals(parent)||"kids".equals(parent)
+          ||"maps".equals(parent)||"apps".equals(parent)||"mirror".equals(parent)
+          ||"set".equals(parent)){
+          String message="هذه الوظيفة غير مدعومة داخل Android Auto حالياً؛ افتحها من الهاتف";
+          out.add(item("unsupported:"+parent,message,"متاحة من تطبيق الهاتف",0));
         }else if("music".equals(parent)){
           List<Track> found=loadMusic();
           synchronized(queue){queue.clear();queue.addAll(found);}
