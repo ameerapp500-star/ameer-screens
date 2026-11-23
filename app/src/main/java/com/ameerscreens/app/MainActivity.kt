@@ -101,6 +101,8 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        requestAudioPermission()
+
         window.statusBarColor = bg
         window.navigationBarColor = bg
 
@@ -113,6 +115,36 @@ class MainActivity : Activity() {
             showHome()
         } else {
             showActivation()
+        }
+    }
+
+    private fun requestAudioPermission() {
+        val permission = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            android.Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            android.Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        if (checkSelfPermission(permission) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(permission), 4106)
+        }
+    }
+
+    @Deprecated("Legacy permission callback")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 4106 &&
+            grantResults.isNotEmpty() &&
+            grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            try {
+                androidx.media.MediaBrowserServiceCompat::class.java
+                sendBroadcast(Intent("com.ameerscreens.app.AUDIO_PERMISSION_GRANTED"))
+            } catch (_: Exception) {}
+            Toast.makeText(this, "تم السماح بالوصول إلى ملفات الصوت", Toast.LENGTH_SHORT).show()
         }
     }
 
