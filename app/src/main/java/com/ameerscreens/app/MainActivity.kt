@@ -441,6 +441,10 @@ class MainActivity : Activity() {
         root.addView(text("صُنع لتجربة مشاهدة أفضل  •  الإصدار 1.2", 10f, muted).apply {
             gravity = Gravity.CENTER
         })
+        addSpace(root, 14)
+        addButton(root, "عرض واجهة أمير للشاشات على شاشة السيارة", Color.rgb(0, 125, 125)) {
+            startActivity(Intent(this, com.ameerscreens.app.auto.AmeerProjectionSetupActivity::class.java))
+        }
 
         setContentView(ScrollView(this).apply {
             isFillViewport = true
