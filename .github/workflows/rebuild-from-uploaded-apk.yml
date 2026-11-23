@@ -97,7 +97,7 @@ jobs:
           }
           EOF
           echo "APK SHA-256:" > project/REBUILD-NOTES.txt
-          sha256sum input/app-debug.apk >> project/REBUILD-NOTES.txt
+          cat decoded/output/apk-sha256.txt >> project/REBUILD-NOTES.txt
           echo "Reconstructed from JADX output. This is a rebuild baseline, not yet the Android Auto UI modification." >> project/REBUILD-NOTES.txt
 
       - name: Build APK
