@@ -68,6 +68,88 @@ jobs:
           s = s.replace("this.f$0.lambda$play$0(mediaPlayer);", "AutoService.this.lambda$play$0(mediaPlayer);")
           s = s.replace("this.f$0.lambda$play$1(mediaPlayer, i, i2);", "AutoService.this.lambda$play$1(mediaPlayer, i, i2);")
           p.write_text(s)
+          cat > project/app/src/main/java/com/carscreens/app/MapsCarAppService.java <<'EOF'
+          package com.carscreens.app;
+
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.net.Uri;
+          import androidx.car.app.CarAppService;
+          import androidx.car.app.CarContext;
+          import androidx.car.app.Screen;
+          import androidx.car.app.Session;
+          import androidx.car.app.model.Action;
+          import androidx.car.app.model.ItemList;
+          import androidx.car.app.model.ListTemplate;
+          import androidx.car.app.model.Row;
+          import androidx.car.app.model.Template;
+          import androidx.car.app.validation.HostValidator;
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+
+          public class MapsCarAppService extends CarAppService {
+              static class MapsSession extends Session {
+                  @Override public Screen onCreateScreen(Intent intent) {
+                      return new MapsScreen(getCarContext());
+                  }
+              }
+
+              @Override public Session onCreateSession() {
+                  return new MapsSession();
+              }
+
+              static class MapsScreen extends Screen {
+                  MapsScreen(CarContext context) { super(context); }
+
+                  @Override public Template onGetTemplate() {
+                      ItemList.Builder list = new ItemList.Builder();
+                      SharedPreferences prefs = getCarContext().getSharedPreferences("ameer_maps", 0);
+                      int count = 0;
+                      try {
+                          JSONArray apps = new JSONArray(prefs.getString("apps", "[]"));
+                          for (int i = 0; i < apps.length(); i++) {
+                              JSONObject app = apps.optJSONObject(i);
+                              if (app == null) continue;
+                              String name = app.optString("n", "خرائط");
+                              String packageName = app.optString("p", "");
+                              if (packageName.isEmpty()) continue;
+                              list.addItem(new Row.Builder()
+                                  .setTitle(name)
+                                  .addText("اضغط لفتح تطبيق الملاحة المختار")
+                                  .setOnClickListener(() -> openMap(packageName))
+                                  .build());
+                              count++;
+                          }
+                      } catch (Exception ignored) { }
+                      if (count == 0) {
+                          list.addItem(new Row.Builder()
+                              .setTitle("ماكو تطبيقات خرائط مضافة")
+                              .addText("أضف تطبيق الخرائط من قسم الخرائط في أمير على الهاتف")
+                              .build());
+                      }
+                      return new ListTemplate.Builder()
+                          .setSingleList(list.build())
+                          .setTitle("خرائط أمير")
+                          .setHeaderAction(Action.APP_ICON)
+                          .build();
+                  }
+
+                  private void openMap(String packageName) {
+                      Intent launch = getCarContext().getPackageManager().getLaunchIntentForPackage(packageName);
+                      if (launch != null) {
+                          launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                          getCarContext().startCarApp(launch);
+                      } else {
+                          getCarContext().startCarApp(new Intent(CarContext.ACTION_NAVIGATE, Uri.parse("geo:0,0")));
+                      }
+                  }
+              }
+
+              @Override public HostValidator createHostValidator() {
+                  return HostValidator.ALLOW_ALL_HOSTS_VALIDATOR;
+              }
+          }
+          EOF
           p = base / "MapsCarAppService.java"
           s = p.read_text().replace("this.f$0.lambda$onGetTemplate$0();", "MapsScreen.this.lambda$onGetTemplate$0();")
           p.write_text(s)
