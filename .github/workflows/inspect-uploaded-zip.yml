@@ -1,0 +1,37 @@
+name: Inspect uploaded Ameer Screens ZIP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Ameer-Screens-APK.zip'
+      - '.github/workflows/inspect-uploaded-zip.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify and extract the exact uploaded ZIP
+        run: |
+          set -e
+          test -s Ameer-Screens-APK.zip
+          echo "=== ARCHIVE CONTENTS ==="
+          unzip -l Ameer-Screens-APK.zip
+          mkdir extracted
+          unzip -q Ameer-Screens-APK.zip -d extracted
+          echo "=== EXTRACTED FILES ==="
+          find extracted -maxdepth 6 -type f -printf '%p (%s bytes)\n' | sort | head -500
+          echo "=== PROJECT MARKERS ==="
+          find extracted -type f \( -name 'settings.gradle' -o -name 'settings.gradle.kts' -o -name 'AndroidManifest.xml' -o -name '*.apk' -o -name 'MainActivity.kt' -o -name 'build.gradle' -o -name 'build.gradle.kts' \) -print
+      - name: Upload extracted project for source review
+        uses: actions/upload-artifact@v4
+        with:
+          name: ameer-uploaded-zip-extracted
+          path: extracted/
+          if-no-files-found: error
