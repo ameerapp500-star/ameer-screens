@@ -32,7 +32,6 @@ jobs:
           cp patches/AutoService.java app/src/main/java/com/carscreens/app/AutoService.java
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           # Declare the permissions required by the original app's radio and
           # local-audio features. READ_EXTERNAL_STORAGE is legacy-only.
@@ -48,11 +47,11 @@ jobs:
           for permission in permissions:
               tag = f'<uses-permission android:name="{permission}" />'
               if permission not in xml:
-                  xml = xml.replace(marker, tag + '\\n    ' + marker, 1)
+                  xml = xml.replace(marker, tag + '\n    ' + marker, 1)
           legacy = 'android.permission.READ_EXTERNAL_STORAGE'
           if legacy not in xml:
               tag = '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />'
-              xml = xml.replace(marker, tag + '\\n    ' + marker, 1)
+              xml = xml.replace(marker, tag + '\n    ' + marker, 1)
           manifest.write_text(xml)
 
           # Ask the user for local audio access on first launch.
