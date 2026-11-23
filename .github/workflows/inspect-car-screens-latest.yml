@@ -1,0 +1,35 @@
+name: Inspect CarScreens latest ZIP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'CarScreens-latest.zip'
+      - '.github/workflows/inspect-car-screens-latest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect archive and extract files
+        run: |
+          set -e
+          test -s CarScreens-latest.zip
+          echo "=== ZIP LIST ==="
+          unzip -l CarScreens-latest.zip
+          mkdir extracted
+          unzip -q CarScreens-latest.zip -d extracted
+          echo "=== FILE INVENTORY ==="
+          find extracted -type f -printf '%p (%s bytes)\n' | sort | head -1000
+          echo "=== ANDROID PROJECT MARKERS ==="
+          find extracted -type f \( -name 'settings.gradle' -o -name 'settings.gradle.kts' -o -name 'AndroidManifest.xml' -o -name '*.apk' -o -name 'MainActivity.kt' -o -name 'build.gradle' -o -name 'build.gradle.kts' \) -print
+      - uses: actions/upload-artifact@v4
+        with:
+          name: carscreens-latest-inspected
+          path: extracted/
+          if-no-files-found: error
