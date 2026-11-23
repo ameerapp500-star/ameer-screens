@@ -1,0 +1,71 @@
+name: Build original Ameer Screens APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'CarScreens-latest.zip'
+      - '.github/workflows/build-original-ameer.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Extract original project
+        run: |
+          rm -rf app codegen
+          unzip -q CarScreens-latest.zip -d .
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = 'AmeerScreensOriginal'
+          include ':app'
+          EOF
+          cat > build.gradle <<'EOF'
+          // Root project; Android Gradle Plugin is declared in app/build.gradle.
+          EOF
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          EOF
+          test -f app/src/main/assets/index.html
+          test -f app/src/main/java/com/carscreens/app/MainActivity.java
+          test -f app/src/main/java/com/carscreens/app/AutoService.java
+
+      - name: Create Gradle wrapper
+        run: |
+          gradle wrapper --gradle-version 8.7
+          chmod +x gradlew
+
+      - name: Build original debug APK
+        run: ./gradlew --no-daemon assembleDebug --stacktrace
+
+      - name: Verify APK
+        run: |
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          ls -lh app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ameer-screens-original-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
