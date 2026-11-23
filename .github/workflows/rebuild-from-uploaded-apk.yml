@@ -60,7 +60,9 @@ jobs:
           set -euo pipefail
           mkdir -p project/app/src/main
           cp decoded/resources/AndroidManifest.xml project/app/src/main/AndroidManifest.xml
-          cp -R decoded/resources/res project/app/src/main/res
+          mkdir -p project/app/src/main/res/drawable project/app/src/main/res/xml
+          cp decoded/resources/res/drawable/ic_launcher.png project/app/src/main/res/drawable/
+          cp decoded/resources/res/xml/automotive_app_desc.xml project/app/src/main/res/xml/
           mkdir -p project/app/src/main/assets
           cp -R decoded/resources/assets/. project/app/src/main/assets/
           mkdir -p project/app/src/main/java/com/carscreens/app
