@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'CarScreens-latest.zip'
+      - 'patches/**'
       - '.github/workflows/build-original-ameer.yml'
 
 permissions:
@@ -24,10 +25,30 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Extract original project
+      - name: Extract original project and apply updates
         run: |
           rm -rf app codegen
           unzip -q CarScreens-latest.zip -d .
+          cp patches/AutoService.java app/src/main/java/com/carscreens/app/AutoService.java
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/java/com/carscreens/app/MainActivity.java')
+          s = p.read_text()
+          old = '    super.onCreate(b);'
+          new = '''    super.onCreate(b);
+              // Request audio-library access so Android Auto can browse local music.
+              if (Build.VERSION.SDK_INT >= 33) {
+                if (checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED)
+                  requestPermissions(new String[]{Manifest.permission.READ_MEDIA_AUDIO}, 77);
+              } else if (Build.VERSION.SDK_INT >= 23) {
+                if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+                  requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 77);
+              }'''
+          if old not in s:
+              raise SystemExit('Could not locate MainActivity.onCreate insertion point')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
           cat > settings.gradle <<'EOF'
           pluginManagement {
               repositories { google(); mavenCentral(); gradlePluginPortal() }
@@ -66,6 +87,6 @@ jobs:
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: ameer-screens-original-debug-apk
+          name: ameer-screens-car-media-v2
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
