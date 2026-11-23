@@ -34,6 +34,7 @@ jobs:
           cp patches/AmeerHomeScreen.java app/src/main/java/com/carscreens/app/AmeerHomeScreen.java
           cp patches/AmeerMediaListScreen.java app/src/main/java/com/carscreens/app/AmeerMediaListScreen.java
           cp patches/AmeerNowPlayingScreen.java app/src/main/java/com/carscreens/app/AmeerNowPlayingScreen.java
+          cp patches/AmeerUnavailableScreen.java app/src/main/java/com/carscreens/app/AmeerUnavailableScreen.java
           python3 - <<'PY'
           from pathlib import Path
 
