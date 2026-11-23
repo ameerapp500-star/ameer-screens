@@ -95,6 +95,16 @@ jobs:
           grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
           grep -q 'android.permission.READ_MEDIA_AUDIO' app/src/main/AndroidManifest.xml
 
+      - name: Package original source for car UI development
+        run: |
+          zip -qr /tmp/ameer-original-source.zip app/src/main app/build.gradle
+      - name: Upload original source inspection bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ameer-original-source-inspection
+          path: /tmp/ameer-original-source.zip
+          if-no-files-found: error
+
       - name: Create Gradle wrapper
         run: |
           gradle wrapper --gradle-version 8.7
