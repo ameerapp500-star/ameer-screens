@@ -1,0 +1,30 @@
+name: Recover Original Ameer Screens Source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/recover-original-source.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract original project archive
+        run: |
+          test -f ameer-screens-starter.zip
+          unzip -q ameer-screens-starter.zip -d restored-source
+          find restored-source -maxdepth 4 -type f | sort
+          cd restored-source
+          zip -qr ../ameer-screens-original-source.zip .
+      - name: Upload original source
+        uses: actions/upload-artifact@v4
+        with:
+          name: ameer-screens-original-source
+          path: ameer-screens-original-source.zip
+          if-no-files-found: error
