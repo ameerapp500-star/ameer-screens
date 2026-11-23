@@ -14,6 +14,7 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import androidx.car.app.*
+import androidx.car.app.validation.HostValidator
 import androidx.car.app.model.*
 import androidx.car.app.navigation.model.NavigationTemplate
 
@@ -127,7 +128,6 @@ class AmeerCarScreen(context: CarContext) : Screen(context) {
             .build()
         return NavigationTemplate.Builder()
             .setActionStrip(ActionStrip.Builder().addAction(action).build())
-            .withPan()
             .build()
     }
 
