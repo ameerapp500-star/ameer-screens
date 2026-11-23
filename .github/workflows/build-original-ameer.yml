@@ -63,14 +63,15 @@ jobs:
           gradle_text = gradle_file.read_text()
           gradle_text = gradle_text.replace('compileSdk 34', 'compileSdk 35')
           if 'androidx.car.app:app:' not in gradle_text:
-              gradle_text += "\ndependencies {\n  implementation 'androidx.car.app:app:1.8.0-rc01'\n  implementation 'androidx.media:media:1.7.0'\n}\n"
+              nl = chr(10)
+              gradle_text += nl + "dependencies {" + nl + "  implementation 'androidx.car.app:app:1.8.0-rc01'" + nl + "  implementation 'androidx.media:media:1.7.0'" + nl + "}" + nl
           gradle_file.write_text(gradle_text)
 
           # Declare the templated media car app while retaining the original media service.
           manifest = Path('app/src/main/AndroidManifest.xml')
           xml = manifest.read_text()
           if 'androidx.car.app.MEDIA_TEMPLATES' not in xml:
-              xml = xml.replace('<application', '<uses-permission android:name="androidx.car.app.MEDIA_TEMPLATES" />\n  <application', 1)
+              xml = xml.replace('<application', '<uses-permission android:name="androidx.car.app.MEDIA_TEMPLATES" />' + chr(10) + '  <application', 1)
           if 'android:name=".AmeerCarAppService"' not in xml:
               service = '''<service android:name=".AmeerCarAppService" android:exported="true" android:label="أمير للشاشات">
                   <intent-filter>
@@ -78,7 +79,7 @@ jobs:
                       <category android:name="androidx.car.app.category.MEDIA" />
                   </intent-filter>
               </service>'''
-              xml = xml.replace('</application>', service + '\n  <meta-data android:name="androidx.car.app.minCarApiLevel" android:value="8" />\n</application>', 1)
+              xml = xml.replace('</application>', service + chr(10) + '  <meta-data android:name="androidx.car.app.minCarApiLevel" android:value="8" />' + chr(10) + '</application>', 1)
           manifest.write_text(xml)
 
           desc = Path('app/src/main/res/xml/automotive_app_desc.xml')
