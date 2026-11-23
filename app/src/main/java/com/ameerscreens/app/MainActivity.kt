@@ -9,6 +9,9 @@ import android.graphics.drawable.GradientDrawable
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.provider.DocumentsContract
 import android.view.Gravity
 import android.view.View
@@ -148,6 +151,31 @@ class MainActivity : Activity() {
         }
         layout.addView(input, LinearLayout.LayoutParams(-1, -2))
 
+        val deviceId = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ANDROID_ID
+        ) ?: "غير متاح"
+
+        addSpace(layout, 16)
+        layout.addView(text("معرّف الجهاز الخاص بالتفعيل", 13f, muted, true))
+        addSpace(layout, 6)
+
+        val idBox = TextView(this).apply {
+            text = deviceId
+            textSize = 13f
+            setTextColor(white)
+            gravity = Gravity.CENTER
+            background = shape(card)
+            setPadding(dp(12), dp(13), dp(12), dp(13))
+        }
+        layout.addView(idBox, LinearLayout.LayoutParams(-1, -2))
+
+        addButton(layout, "نسخ معرّف الجهاز", Color.rgb(44, 60, 78)) {
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("Ameer Device ID", deviceId))
+            Toast.makeText(this, "تم نسخ معرّف الجهاز", Toast.LENGTH_SHORT).show()
+        }
+
         addButton(layout, "تفعيل التطبيق", Color.rgb(0, 155, 145)) {
             val code = input.text.toString().trim()
             if (code.isEmpty()) {
@@ -166,7 +194,7 @@ class MainActivity : Activity() {
                     connection.doOutput = true
                     connection.setRequestProperty("Content-Type", "application/json")
                     connection.outputStream.use {
-                        it.write(JSONObject().put("code", code).toString().toByteArray())
+                        it.write(JSONObject().put("code", code).put("device_id", deviceId).put("deviceId", deviceId).toString().toByteArray())
                     }
                     val response = JSONObject(
                         connection.inputStream.bufferedReader().use { it.readText() }
