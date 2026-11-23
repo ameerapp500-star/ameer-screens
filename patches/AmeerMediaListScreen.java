@@ -6,7 +6,6 @@ import android.media.MediaDescription;
 import android.media.session.MediaController;
 import android.os.Bundle;
 import android.text.TextUtils;
-
 import androidx.car.app.CarContext;
 import androidx.car.app.Screen;
 import androidx.car.app.model.Action;
@@ -15,12 +14,12 @@ import androidx.car.app.model.ListTemplate;
 import androidx.car.app.model.Row;
 import androidx.car.app.model.Template;
 import androidx.car.app.media.MediaPlaybackManager;
+import androidx.lifecycle.LifecycleEventObserver;
 import android.support.v4.media.session.MediaSessionCompat;
-
 import java.util.ArrayList;
 import java.util.List;
 
-/** Renders the original AutoService MediaBrowser tree as native car-safe rows. */
+/** Renders the original AutoService media tree as native car-safe rows. */
 public final class AmeerMediaListScreen extends Screen {
     private final String parentId;
     private final String title;
@@ -76,7 +75,7 @@ public final class AmeerMediaListScreen extends Screen {
                     }
                 }, null);
         browser.connect();
-        getLifecycle().addObserver((source, event) -> {
+        getLifecycle().addObserver((LifecycleEventObserver) (source, event) -> {
             if (event == androidx.lifecycle.Lifecycle.Event.ON_DESTROY && browser != null) {
                 try { if (browser.isConnected()) browser.disconnect(); } catch (Exception ignored) { }
             }
