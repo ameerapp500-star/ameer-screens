@@ -31,42 +31,35 @@ jobs:
           "$SDKMANAGER" --licenses </dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Download and decompile the exact uploaded APK
+      - name: Download the decompilation of the exact uploaded APK
+        uses: actions/download-artifact@v4
+        with:
+          name: ameer-apk-decompiled
+          path: extracted
+          repository: ameerapp500-star/ameer-screens
+          run-id: 45276581730
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Unpack decompiled app files
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y curl jq unzip zip
-          curl -L --fail --retry 3 \
-            "https://raw.githubusercontent.com/ameerapp500-star/ameer-screens/main/Ameer-Screens-APK.zip" \
-            -o uploaded.zip
-          unzip -q uploaded.zip -d input
-          test -f input/app-debug.apk
-          URL="$(curl -fsSL https://api.github.com/repos/skylot/jadx/releases/latest | jq -r '.assets[] | select(.name | test("^jadx-.*[.]zip$")) | .browser_download_url' | head -n 1)"
-          test -n "$URL"
-          curl -L --fail --retry 6 --retry-all-errors --retry-delay 3 "$URL" -o jadx.zip
-          mkdir jadx
-          unzip -q jadx.zip -d jadx
-          chmod +x jadx/bin/jadx
-          set +e
-          ./jadx/bin/jadx --show-bad-code -d decoded input/app-debug.apk
-          JADX_EXIT=$?
-          set -e
-          echo "JADX exit: $JADX_EXIT"
-          test -f decoded/resources/AndroidManifest.xml
-          test -d decoded/sources/com/carscreens/app
+          unzip -q extracted/ameer-apk-decompiled.zip -d decoded
+          mv decoded/output/decompiled decoded/app
+          test -f decoded/app/resources/AndroidManifest.xml
+          test -d decoded/app/sources/com/carscreens/app
 
       - name: Create a clean Android Gradle project
         run: |
           set -euo pipefail
           mkdir -p project/app/src/main
-          cp decoded/resources/AndroidManifest.xml project/app/src/main/AndroidManifest.xml
+          cp decoded/app/resources/AndroidManifest.xml project/app/src/main/AndroidManifest.xml
           mkdir -p project/app/src/main/res/drawable project/app/src/main/res/xml
-          cp decoded/resources/res/drawable/ic_launcher.png project/app/src/main/res/drawable/
-          cp decoded/resources/res/xml/automotive_app_desc.xml project/app/src/main/res/xml/
+          cp decoded/app/resources/res/drawable/ic_launcher.png project/app/src/main/res/drawable/
+          cp decoded/app/resources/res/xml/automotive_app_desc.xml project/app/src/main/res/xml/
           mkdir -p project/app/src/main/assets
-          cp -R decoded/resources/assets/. project/app/src/main/assets/
+          cp -R decoded/app/resources/assets/. project/app/src/main/assets/
           mkdir -p project/app/src/main/java/com/carscreens/app
-          find decoded/sources/com/carscreens/app -maxdepth 1 -name '*.java' ! -name 'R.java' -exec cp {} project/app/src/main/java/com/carscreens/app/ \;
+          find decoded/app/sources/com/carscreens/app -maxdepth 1 -name '*.java' ! -name 'R.java' -exec cp {} project/app/src/main/java/com/carscreens/app/ \;
           cat > project/settings.gradle <<'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
           dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
