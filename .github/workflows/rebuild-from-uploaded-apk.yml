@@ -1,0 +1,118 @@
+name: Rebuild Ameer Screens from uploaded APK
+
+on:
+  push:
+    paths:
+      - ".github/workflows/rebuild-from-uploaded-apk.yml"
+    branches:
+      - rebuild-from-uploaded-apk
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Download and decompile the exact uploaded APK
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl jq unzip zip
+          curl -L --fail --retry 3 \
+            "https://raw.githubusercontent.com/ameerapp500-star/ameer-screens/main/Ameer-Screens-APK.zip" \
+            -o uploaded.zip
+          unzip -q uploaded.zip -d input
+          test -f input/app-debug.apk
+          URL="$(curl -fsSL https://api.github.com/repos/skylot/jadx/releases/latest | jq -r '.assets[] | select(.name | test("^jadx-.*[.]zip$")) | .browser_download_url' | head -n 1)"
+          test -n "$URL"
+          curl -L --fail "$URL" -o jadx.zip
+          mkdir jadx
+          unzip -q jadx.zip -d jadx
+          chmod +x jadx/bin/jadx
+          set +e
+          ./jadx/bin/jadx --show-bad-code -d decoded input/app-debug.apk
+          JADX_EXIT=$?
+          set -e
+          echo "JADX exit: $JADX_EXIT"
+          test -f decoded/resources/AndroidManifest.xml
+          test -d decoded/sources/com/carscreens/app
+
+      - name: Create a clean Android Gradle project
+        run: |
+          set -euo pipefail
+          mkdir -p project/app/src/main
+          cp decoded/resources/AndroidManifest.xml project/app/src/main/AndroidManifest.xml
+          cp -R decoded/resources/res project/app/src/main/res
+          mkdir -p project/app/src/main/assets
+          cp -R decoded/resources/assets/. project/app/src/main/assets/
+          mkdir -p project/app/src/main/java/com/carscreens/app
+          find decoded/sources/com/carscreens/app -maxdepth 1 -name '*.java' ! -name 'R.java' -exec cp {} project/app/src/main/java/com/carscreens/app/ \;
+          cat > project/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = "AmeerScreens"
+          include(":app")
+          EOF
+          cat > project/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+          cat > project/gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          EOF
+          cat > project/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace 'com.carscreens.app'
+              compileSdk 35
+              defaultConfig {
+                  applicationId 'com.carscreens.app'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          dependencies {
+              implementation 'androidx.car.app:app:1.4.0'
+              implementation 'androidx.core:core:1.13.1'
+              implementation 'com.google.guava:guava:33.0.0-android'
+          }
+          EOF
+          echo "APK SHA-256:" > project/REBUILD-NOTES.txt
+          sha256sum input/app-debug.apk >> project/REBUILD-NOTES.txt
+          echo "Reconstructed from JADX output. This is a rebuild baseline, not yet the Android Auto UI modification." >> project/REBUILD-NOTES.txt
+
+      - name: Build APK
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Assemble debug APK
+        working-directory: project
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload reconstructed project and APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ameer-reconstructed-baseline
+          path: |
+            project/app/build/outputs/apk/debug/app-debug.apk
+            project/REBUILD-NOTES.txt
+          if-no-files-found: error
+          retention-days: 14
