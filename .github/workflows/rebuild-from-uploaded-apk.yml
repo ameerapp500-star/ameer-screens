@@ -60,6 +60,18 @@ jobs:
           cp -R decoded/app/resources/assets/. project/app/src/main/assets/
           mkdir -p project/app/src/main/java/com/carscreens/app
           find decoded/app/sources/com/carscreens/app -maxdepth 1 -name '*.java' ! -name 'R.java' -exec cp {} project/app/src/main/java/com/carscreens/app/ \;
+          python3 - <<'PY'
+          from pathlib import Path
+          base = Path("project/app/src/main/java/com/carscreens/app")
+          p = base / "AutoService.java"
+          s = p.read_text()
+          s = s.replace("this.f$0.lambda$play$0(mediaPlayer);", "AutoService.this.lambda$play$0(mediaPlayer);")
+          s = s.replace("this.f$0.lambda$play$1(mediaPlayer, i, i2);", "AutoService.this.lambda$play$1(mediaPlayer, i, i2);")
+          p.write_text(s)
+          p = base / "MapsCarAppService.java"
+          s = p.read_text().replace("this.f$0.lambda$onGetTemplate$0();", "MapsScreen.this.lambda$onGetTemplate$0();")
+          p.write_text(s)
+          PY
           cat > project/settings.gradle <<'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
           dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
