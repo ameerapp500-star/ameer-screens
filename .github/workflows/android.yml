@@ -4,7 +4,7 @@ name: Build Ameer Screens APK
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, 'codex/**']
 
 permissions:
   contents: read
