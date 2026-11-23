@@ -1,13 +1,13 @@
 package com.carscreens.app;
 
+import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import androidx.car.app.CarAppService;
 import androidx.car.app.Session;
-import androidx.car.app.validation.HostValidator;
 import androidx.car.app.Screen;
-import androidx.car.app.CarContext;
+import androidx.car.app.validation.HostValidator;
 
-/** Native Android Auto entry point for the Ameer Screens media experience. */
+/** Native Android Auto entry point for Ameer Screens. */
 public final class AmeerCarAppService extends CarAppService {
     @Override
     public HostValidator createHostValidator() {
@@ -23,8 +23,8 @@ public final class AmeerCarAppService extends CarAppService {
     public Session onCreateSession() {
         return new Session() {
             @Override
-            public Screen onCreateScreen(CarContext carContext) {
-                return new AmeerHomeScreen(carContext);
+            public Screen onCreateScreen(Intent intent) {
+                return new AmeerHomeScreen(getCarContext());
             }
         };
     }
