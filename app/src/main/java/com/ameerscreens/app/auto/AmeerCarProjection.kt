@@ -161,7 +161,8 @@ class AmeerProjectionService : Service() {
             .setContentText("العرض على شاشة السيارة يعمل").build()
         if (Build.VERSION.SDK_INT >= 29) startForeground(772, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) else startForeground(772, n)
         val code = intent?.getIntExtra("result_code", Activity.RESULT_CANCELED) ?: Activity.RESULT_CANCELED
-        val data = if (Build.VERSION.SDK_INT >= 33) intent?.getParcelableExtra("result_data", Intent::class.java) else @Suppress("DEPRECATION") intent?.getParcelableExtra("result_data")
+        @Suppress("DEPRECATION")
+        val data: Intent? = intent?.getParcelableExtra("result_data")
         if (data != null && code == Activity.RESULT_OK) AmeerProjectionBridge.start(this, code, data)
         return START_NOT_STICKY
     }
