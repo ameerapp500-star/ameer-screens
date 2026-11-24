@@ -132,9 +132,13 @@ public final class AmeerCarAppService extends CarAppService {
                             .setOnClickListener(display::goHome)
                             .build())
                     .build();
+            ActionStrip panStrip = new ActionStrip.Builder()
+                    .addAction(Action.PAN)
+                    .build();
             return new NavigationTemplate.Builder()
                     .setActionStrip(strip)
-                    .withPan()
+                    .setMapActionStrip(panStrip)
+                    .setPanModeListener(() -> {})
                     .build();
         }
     }
