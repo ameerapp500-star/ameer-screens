@@ -111,6 +111,23 @@ public class AutoService extends MediaBrowserService {
           out.add(item("mirror","انعكاس الشاشة","عرض شاشة الهاتف",B));
           out.add(item("set","الإعدادات","إعدادات أمير للشاشات",B));
         }else if("radio".equals(parent)){
+          out.add(item("radio:popular","أكثر المحطات شعبية","أفضل المحطات حسب التصويت",B));
+          out.add(item("radio:countries","اختيار الدولة","تصفح المحطات حسب الدولة",B));
+        }else if("radio:popular".equals(parent)){
+          JSONArray a=new JSONArray(httpGet("stations/search?hidebroken=true&order=votes&reverse=true&limit="+MAX_STATIONS));
+          List<Track> found=new ArrayList<>();
+          for(int i=0;i<a.length();i++){
+            JSONObject st=a.getJSONObject(i);
+            String u=st.optString("url_resolved"),n=st.optString("name").trim();
+            if(!TextUtils.isEmpty(u)&&!TextUtils.isEmpty(n)){
+              Track t=new Track(u,n,"راديو مباشر","");
+              found.add(t);out.add(item(u,n,"محطة مباشرة",P));
+            }
+          }
+          synchronized(queue){queue.clear();queue.addAll(found);}
+          synchronized(knownTracks){for(Track t:found)knownTracks.put(t.id,t);}
+          if(found.isEmpty())out.add(item("radio-empty","لا توجد محطات متاحة حالياً","حاول مرة أخرى لاحقاً",0));
+        }else if("radio:countries".equals(parent)){
           JSONArray a=new JSONArray(httpGet("countries?hidebroken=true"));
           List<JSONObject> countries=new ArrayList<>();
           for(int i=0;i<a.length();i++)countries.add(a.getJSONObject(i));
@@ -119,6 +136,7 @@ public class AutoService extends MediaBrowserService {
             JSONObject c=countries.get(i);String code=c.optString("iso_3166_1");
             if(!TextUtils.isEmpty(code))out.add(item("country:"+code,c.optString("name")+" · "+c.optInt("stationcount"),"محطات الراديو",B));
           }
+          if(out.isEmpty())out.add(item("radio-empty","تعذر تحميل الدول حالياً","تحقق من اتصال الإنترنت",0));
         }else if(parent.startsWith("country:")){
           String code=parent.substring(8);
           JSONArray a=new JSONArray(httpGet("stations/search?countrycode="+URLEncoder.encode(code,"UTF-8")+"&hidebroken=true&order=votes&reverse=true&limit="+MAX_STATIONS));
@@ -143,7 +161,9 @@ public class AutoService extends MediaBrowserService {
           for(Track t:found)out.add(item(t.id,t.title,TextUtils.isEmpty(t.artist)?"ملف صوتي":t.artist,P));
           if(found.isEmpty())out.add(item("empty-music","لا توجد ملفات صوتية","اسمح للتطبيق بالوصول إلى الموسيقى",P));
         }
-      }catch(Exception ignored){}
+      }catch(Exception e){
+        if(out.isEmpty())out.add(item("load-error","تعذر تحميل المحتوى","تحقق من الإنترنت ثم أعد المحاولة",0));
+      }
       result.sendResult(out);
     },"AmeerCarBrowse").start();
   }
@@ -173,7 +193,7 @@ public class AutoService extends MediaBrowserService {
   private void playId(String id){
     if(TextUtils.isEmpty(id)||"empty-music".equals(id))return;
     Track t;synchronized(knownTracks){t=knownTracks.get(id);}
-    synchronized(queue){for(int i=0;i<queue.size();i++)if(id.equals(queue.get(i).id)){currentIndex=i;break;}}
+    synchronized(queue){currentIndex=-1;for(int i=0;i<queue.size();i++)if(id.equals(queue.get(i).id)){currentIndex=i;break;}}
     if(t==null)t=new Track(id,"Ameer Screens","","");
     currentId=id;releasePlayer();prepared=false;
     session.setMetadata(new MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_MEDIA_ID,id)
@@ -194,7 +214,7 @@ public class AutoService extends MediaBrowserService {
         }catch(Exception e){publishState(PlaybackState.STATE_ERROR);}
       });
       player.setOnCompletionListener(mp->skip(1));
-      player.setOnErrorListener((mp,w,e)->{prepared=false;publishState(PlaybackState.STATE_ERROR);return true;});
+      player.setOnErrorListener((mp,w,e)->{prepared=false;releasePlayer();abandonFocus();publishState(PlaybackState.STATE_ERROR);return true;});
       player.setDataSource(this,Uri.parse(id));player.prepareAsync();
     }catch(Exception e){releasePlayer();publishState(PlaybackState.STATE_ERROR);}
   }
