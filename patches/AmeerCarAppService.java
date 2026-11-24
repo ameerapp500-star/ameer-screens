@@ -134,6 +134,7 @@ public final class AmeerCarAppService extends CarAppService {
                     .build();
             return new NavigationTemplate.Builder()
                     .setActionStrip(strip)
+                    .withPan()
                     .build();
         }
     }
