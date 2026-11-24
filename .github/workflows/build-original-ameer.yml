@@ -71,16 +71,23 @@ jobs:
           # Declare the templated media car app while retaining the original media service.
           manifest = Path('app/src/main/AndroidManifest.xml')
           xml = manifest.read_text()
-          if 'androidx.car.app.MEDIA_TEMPLATES' not in xml:
-              xml = xml.replace('<application', '<uses-permission android:name="androidx.car.app.MEDIA_TEMPLATES" />' + chr(10) + '  <application', 1)
+          for permission in ('androidx.car.app.NAVIGATION_TEMPLATES', 'androidx.car.app.ACCESS_SURFACE'):
+              if permission not in xml:
+                  tag = f'<uses-permission android:name="{permission}" />'
+                  xml = xml.replace('<application', tag + chr(10) + '  <application', 1)
           if 'android:name=".AmeerCarAppService"' not in xml:
               service = '''<service android:name=".AmeerCarAppService" android:exported="true" android:label="أمير للشاشات">
                   <intent-filter>
                       <action android:name="androidx.car.app.CarAppService" />
-                      <category android:name="androidx.car.app.category.MEDIA" />
+                      <category android:name="androidx.car.app.category.NAVIGATION" />
                   </intent-filter>
               </service>'''
               xml = xml.replace('</application>', service + chr(10) + '  <meta-data android:name="androidx.car.app.minCarApiLevel" android:value="8" />' + chr(10) + '</application>', 1)
+          if 'AmeerCarAppService$PickerActivity' not in xml:
+              picker = '''<activity android:name=".AmeerCarAppService$PickerActivity"
+                  android:exported="false"
+                  android:theme="@android:style/Theme.Translucent.NoTitleBar" />'''
+              xml = xml.replace('</application>', picker + chr(10) + '</application>', 1)
           manifest.write_text(xml)
 
           desc = Path('app/src/main/res/xml/automotive_app_desc.xml')
@@ -95,8 +102,16 @@ jobs:
           old = '    super.onCreate(b);'
           new = '''    super.onCreate(b);
               if (Build.VERSION.SDK_INT >= 33) {
-                if (checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED)
-                  requestPermissions(new String[]{Manifest.permission.READ_MEDIA_AUDIO}, 77);
+                String[] mediaPermissions = new String[] {
+                  Manifest.permission.READ_MEDIA_AUDIO,
+                  Manifest.permission.READ_MEDIA_VIDEO,
+                  Manifest.permission.READ_MEDIA_IMAGES
+                };
+                boolean needsMediaPermission = false;
+                for (String permission : mediaPermissions) {
+                  if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) needsMediaPermission = true;
+                }
+                if (needsMediaPermission) requestPermissions(mediaPermissions, 77);
               } else if (Build.VERSION.SDK_INT >= 23) {
                 if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
                   requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 77);
