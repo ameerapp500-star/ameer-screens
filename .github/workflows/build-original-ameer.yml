@@ -108,10 +108,10 @@ jobs:
           PY
           cat > settings.gradle <<'EOF'
           pluginManagement {
-              repositories { google(); mavenCentral(); gradlePluginPortal() }
+              repositories { google(); maven { url 'https://maven.aliyun.com/repository/central' }; mavenCentral(); gradlePluginPortal() }
           }
           dependencyResolutionManagement {
-              repositories { google(); mavenCentral() }
+              repositories { google(); maven { url 'https://maven.aliyun.com/repository/central' }; mavenCentral() }
           }
           rootProject.name = 'AmeerScreensOriginal'
           include ':app'
