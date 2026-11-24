@@ -138,7 +138,7 @@ public final class AmeerCarAppService extends CarAppService {
             return new NavigationTemplate.Builder()
                     .setActionStrip(strip)
                     .setMapActionStrip(panStrip)
-                    .setPanModeListener(() -> {})
+                    .setPanModeListener(enabled -> {})
                     .build();
         }
     }
