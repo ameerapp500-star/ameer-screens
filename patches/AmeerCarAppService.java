@@ -435,7 +435,7 @@ public final class AmeerCarAppService extends CarAppService {
         }
     }
 
-    private static final class AmeerCarBridge {
+    public static final class AmeerCarBridge {
         private final Context context;
         private final SurfaceDisplay display;
 
