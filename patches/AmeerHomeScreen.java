@@ -8,6 +8,7 @@ import androidx.car.app.model.ItemList;
 import androidx.car.app.model.ListTemplate;
 import androidx.car.app.model.Row;
 import androidx.car.app.model.Template;
+import androidx.core.graphics.drawable.IconCompat;
 
 /** Original Ameer Screens 15-entry menu, rendered with visible icons on the car display. */
 public final class AmeerHomeScreen extends Screen {
@@ -34,7 +35,7 @@ public final class AmeerHomeScreen extends Screen {
     private CarIcon icon(String name) {
         int id = getCarContext().getResources().getIdentifier(name, "drawable", "android");
         if (id == 0) id = android.R.drawable.ic_menu_view;
-        return CarIcon.createWithResource(getCarContext(), id);
+        return new CarIcon.Builder(IconCompat.createWithResource(getCarContext(), id)).build();
     }
 
     @Override
