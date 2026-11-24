@@ -534,16 +534,15 @@ public final class AmeerCarAppService extends CarAppService {
         }
 
         @JavascriptInterface public String listMedia(String kind) {
-            String[] permissions;
+            String requiredPermission;
             if (Build.VERSION.SDK_INT >= 33) {
-                permissions = new String[]{Manifest.permission.READ_MEDIA_AUDIO,
-                        Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_IMAGES};
+                requiredPermission = "audio".equals(kind) ? Manifest.permission.READ_MEDIA_AUDIO
+                        : ("video".equals(kind) ? Manifest.permission.READ_MEDIA_VIDEO
+                        : Manifest.permission.READ_MEDIA_IMAGES);
             } else {
-                permissions = new String[]{Manifest.permission.READ_EXTERNAL_STORAGE};
+                requiredPermission = Manifest.permission.READ_EXTERNAL_STORAGE;
             }
-            for (String permission : permissions) {
-                if (context.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) return "PERM";
-            }
+            if (context.checkSelfPermission(requiredPermission) != PackageManager.PERMISSION_GRANTED) return "PERM";
             Uri base;
             if ("audio".equals(kind)) base = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
             else if ("video".equals(kind)) base = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
